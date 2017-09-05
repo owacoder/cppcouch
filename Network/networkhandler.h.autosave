@@ -1,0 +1,69 @@
+#ifndef NETWORKHANDLER_H
+#define NETWORKHANDLER_H
+
+#include <QList>
+#include "../Libraries/Network/network.h"
+
+namespace Network
+{
+    namespace Http
+    {
+        class AsyncConnectionManager
+        {
+            struct AsyncConnectionObject
+            {
+                AsyncConnectionObject(AsyncConnection *c = 0)
+                    : c(c)
+                    , connect(NULL)
+                    , disconnect(NULL)
+                    , request(NULL)
+                    , response(NULL)
+                {}
+                
+                AsyncConnection *c;
+                AsyncConnection::ConnectHandler connect;
+                AsyncConnection::DisconnectHandler disconnect;
+                AsyncConnection::RequestHandler request;
+                AsyncConnection::ResponseHandler response;
+            };
+            
+            void disconnect_handler(AsyncConnection &c, const boost::system::error_code &err)
+            {
+                for (std::vector<AsyncConnection *>::iterator i = async_connections_.begin(); i != async_connections_.end(); ++i)
+                    if (i->c == &c)
+                    {
+                        if (!i->disconnect.empty())
+                            i->disconnect(c, err);
+                        async_connections_.erase(i);
+                        break;
+                    }
+            }
+            
+        public:
+            const std::vector<AsyncConnection *> &connections() {return async_connections_;}
+
+            void registerConnection(AsyncConnection *conn)
+            {
+                async_connections_.push_back(AsyncConnectionObject(conn));
+            }
+
+            void unregisterConnection(AsyncConnection *conn)
+            {
+                for (std::vector<AsyncConnection *>::iterator i = async_connections_.begin(); i != async_connections_.end(); ++i)
+                    if (*i == conn)
+                        i = async_connections_.erase(i), --i;
+            }
+
+            void poll()
+            {
+                for (std::vector<AsyncConnection *>::iterator i = async_connections_.begin(); i != async_connections_.end(); ++i)
+                    (*i)->start();
+            }
+
+        private:
+            std::vector<AsyncConnectionObject> &async_connections_;
+        };
+    }
+}
+
+#endif // NETWORKHANDLER_H
