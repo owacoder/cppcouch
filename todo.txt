@@ -1,0 +1,6 @@
+Implement /_cluster_setup endpoint (cluster)
+Implement /_db_updates endpoint (cluster)
+Implement /_scheduler/jobs and /_scheduler/docs endpoints (cluster)
+Implement /_stats endpoint (node local)
+Implement /db/_security endpoint
+Implement /db/_changes endpoint

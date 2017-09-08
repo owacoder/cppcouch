@@ -2,7 +2,7 @@
 #define CPPCOUCH_SHARED_H
 
 #include "../String/string_tools.h"
-#include <json/json.h>
+#include <json.h>
 #include <sstream>
 #include <iostream>
 #include <map>
@@ -423,21 +423,16 @@ namespace couchdb
     }
 
     // Converts string to JSON value
-    inline Json::Value string_to_json(const std::string &str)
+    inline json::value string_to_json(const std::string &str)
     {
-        std::istringstream stream(str);
-        Json::Value val;
-        try {stream >> val;}
-        catch (Json::Exception) {val = Json::Value();}
-        return val;
+        try {return json::from_json(str);}
+        catch (json::error) {return json::value();}
     }
 
     // Converts JSON value to string
-    inline std::string json_to_string(const Json::Value &val)
+    inline std::string json_to_string(const json::value &val)
     {
-        Json::StreamWriterBuilder builder;
-        builder["indentation"] = "";
-        return Json::writeString(builder, val);
+        return json::to_json(val);
     }
 }
 

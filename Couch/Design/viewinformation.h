@@ -22,9 +22,9 @@ namespace couchdb
             , reduce(reduce)
         {}
 
-        Json::Value to_json() const
+        json::value to_json() const
         {
-            Json::Value result;
+            json::value result;
             result["map"] = map;
             if (!reduce.empty())
                 result["reduce"] = reduce;

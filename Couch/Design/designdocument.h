@@ -37,42 +37,42 @@ namespace couchdb
         bool operator!=(const design_document &other) const {return !(*this == other);}
 
         // Returns the language used by user-defined view functions (normally: javascript)
-        std::string getLanguage() const {return get_data("language").asString();}
+        std::string getLanguage() const {return get_data("language").get_string();}
 
         // Returns design document options
-        Json::Value getOptions() const {return get_data("options");}
+        json::value getOptions() const {return get_data("options");}
 
         // Returns design document filters
-        Json::Value getFilters() const {return get_data("filters");}
+        json::value getFilters() const {return get_data("filters");}
 
         // Returns design document lists
-        Json::Value getLists() const {return get_data("lists");}
+        json::value getLists() const {return get_data("lists");}
 
         // Returns design document rewrites
-        Json::Value getRewrites() const {return get_data("rewrites");}
+        json::value getRewrites() const {return get_data("rewrites");}
 
         // Returns design document shows
-        Json::Value getShows() const {return get_data("shows");}
+        json::value getShows() const {return get_data("shows");}
 
         // Returns design document updates
-        Json::Value getUpdates() const {return get_data("updates");}
+        json::value getUpdates() const {return get_data("updates");}
 
         // Returns the validate_doc_update function definition
-        std::string getValidateDocUpdate() const {return get_data("validate_doc_update").asString();}
+        std::string getValidateDocUpdate() const {return get_data("validate_doc_update").get_string();}
 
         // Returns the raw views object
-        Json::Value getViewsData() const {return get_data("views");}
+        json::value getViewsData() const {return get_data("views");}
 
         // Returns a list of view functions/information
         std::vector<view_information> getViewsInformation() const
         {
-            Json::Value response = get_data("views");
-            if (!response.isObject())
+            json::value response = get_data("views");
+            if (!response.is_object())
                 throw error(error::view_unavailable);
 
             std::vector<view_information> views;
-            for (auto it = response.begin(); it != response.end(); ++it)
-                views.push_back(view_information(it.key(), *it));
+            for (auto it = response.get_object().begin(); it != response.get_object().end(); ++it)
+                views.push_back(view_information(it->first, it->second));
 
             return views;
         }
@@ -80,13 +80,13 @@ namespace couchdb
         // Returns a list of runnable views
         std::vector<view_type> getViews() const
         {
-            Json::Value response = get_data("views");
-            if (!response.isObject())
+            json::value response = get_data("views");
+            if (!response.is_object())
                 throw error(error::view_unavailable);
 
             std::vector<view_type> views;
-            for (auto it = response.begin(); it != response.end(); ++it)
-                views.push_back(view_type(this->comm_, this->db_, this->id_, "_view/" + it.key().asString(), this->revision_));
+            for (auto it = response.get_object().begin(); it != response.get_object().end(); ++it)
+                views.push_back(view_type(this->comm_, this->db_, this->id_, "_view/" + it->first, this->revision_));
 
             return views;
         }
@@ -96,33 +96,33 @@ namespace couchdb
         void setLanguage(const std::string &language) {set_data("language", language);}
 
         // Sets design document options
-        void setOptions(const Json::Value &options /* Object */) {set_data("options", options);}
+        void setOptions(const json::value &options /* Object */) {set_data("options", options);}
 
         // Sets design document filters
-        void setFilters(const Json::Value &filters /* Object */) {set_data("filters", filters);}
+        void setFilters(const json::value &filters /* Object */) {set_data("filters", filters);}
 
         // Sets design document lists
-        void setLists(const Json::Value &lists /* Object */) {set_data("lists", lists);}
+        void setLists(const json::value &lists /* Object */) {set_data("lists", lists);}
 
         // Sets design document rewrites
-        void setRewrites(const Json::Value &rewrites /* Object */) {set_data("rewrites", rewrites);}
+        void setRewrites(const json::value &rewrites /* Object */) {set_data("rewrites", rewrites);}
 
         // Sets design document shows
-        void setShows(const Json::Value &shows /* Object */) {set_data("shows", shows);}
+        void setShows(const json::value &shows /* Object */) {set_data("shows", shows);}
 
         // Sets design document updates
-        void setUpdates(const Json::Value &updates /* Object */) {set_data("updates", updates);}
+        void setUpdates(const json::value &updates /* Object */) {set_data("updates", updates);}
 
         // Sets validate_doc_update function definition content
         void setValidateDocUpdate(const std::string &validate_doc_update) {set_data("validate_doc_update", validate_doc_update);}
 
         // Sets a raw view object (overwrites what views are in the document)
-        void setViews(const Json::Value &views /* Object */) {set_data("views", views);}
+        void setViews(const json::value &views /* Object */) {set_data("views", views);}
 
         // Sets a list of well defined views (overwrites what views are in the document)
         void setViews(const std::vector<view_information> &views)
         {
-            Json::Value obj;
+            json::value obj;
             for (auto v: views)
                 obj[v.name] = v.to_json();
             return set_data("views", obj);
@@ -135,36 +135,36 @@ namespace couchdb
             if (n.find("_design/") == 0)
                 n.erase(0, 8);
 
-            Json::Value response = this->comm_->get_data("/" + url_encode(this->db_) + "/_compact/" + n, "POST");
-            if (!response.isObject())
+            json::value response = this->comm_->get_data("/" + url_encode(this->db_) + "/_compact/" + n, "POST");
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
-            if (response.isMember("error"))
+            if (response.is_member("error"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Compaction of view indexes in " << this->id_ << " failed: " << response["reason"].asString();
+                std::cout << "Compaction of view indexes in " << this->id_ << " failed: " << response["reason"].get_string();
 #endif
-                throw error(error::database_unavailable, response["reason"].asString());
+                throw error(error::database_unavailable, response["reason"].get_string());
             }
 
-            if (!response["ok"].asBool())
+            if (!response["ok"].get_bool())
                 throw error(error::database_unavailable);
         }
 
     protected:
-        Json::Value get_data(const std::string &key) const
+        json::value get_data(const std::string &key) const
         {
-            Json::Value response = document<http_client>::get_data();
-            if (!response.isObject())
+            json::value response = document<http_client>::get_data();
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
             return response[key];
         }
 
-        void set_data(const std::string &key, const Json::Value &value)
+        void set_data(const std::string &key, const json::value &value)
         {
-            Json::Value response = document<http_client>::get_data();
-            if (!response.isObject())
+            json::value response = document<http_client>::get_data();
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
             response[key] = value;

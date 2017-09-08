@@ -5,6 +5,8 @@
 #include <chrono>
 #include <thread>
 
+#include "json.h"
+
 template<typename TConnection>
 void crawl(TConnection connection)
 {
@@ -59,6 +61,29 @@ int main(int argc, char *argv[])
 {
     (void) argc, (void) argv;
 
+    json::value v;
+
+    try
+    {
+        std::istringstream str("[][null,1{}][false,true,1e-1,null,\"about the right length\",{\"+a key+\":12300},[{\"key1\":null,\"key2\":{\"key\": 9123}}]]");
+        for (int i = 0; i < 3; ++i)
+        {
+            str >> v;
+            std::cout << json::to_pretty_json(v, 1) << std::endl;
+        }
+    }
+    catch (json::error e)
+    {
+        std::cout << e.what() << std::endl;
+    }
+    return 0;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        v["object_" + std::to_string(i)] = i;
+    }
+    std::cout << v << std::endl;
+
     try
     {
         auto connection = couchdb::make_cluster_connection(couchdb::http_impl<>(), "http://localhost:5984", couchdb::user("admin", "admin"), couchdb::auth_none);
@@ -77,7 +102,15 @@ int main(int argc, char *argv[])
         } catch (couchdb::error) {}
         connection->set_auth_type(couchdb::auth_basic);
 
-        connection->ensure_db_exists("test_db");
+        auto db = connection->ensure_db_exists("test_db");
+        for (int i = 0; i < 10000; ++i)
+        {
+            db.ensure_doc_exists("test_" + std::to_string(i));
+            std::cout << i << std::endl;
+        }
+
+        crawl(connection);
+        return 0;
     }
     catch (couchdb::error &e)
     {

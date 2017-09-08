@@ -73,14 +73,14 @@ namespace couchdb
             if (data.size() > 0 && data[0] == '{')
             {
                 // check to make sure we did not receive an error
-                Json::Value doc = string_to_json(data);
+                json::value doc = string_to_json(data);
 
-                if (doc.isObject() && doc.isMember("error") && doc.isMember("reason"))
+                if (doc.is_object() && doc.is_member("error") && doc.is_member("reason"))
                 {
 #ifdef CPPCOUCH_DEBUG
-                    std::cout << "Could not retrieve data for attachment \"" + id_ + "\": " + doc["reason"].asString();
+                    std::cout << "Could not retrieve data for attachment \"" + id_ + "\": " + doc["reason"].get_string();
 #endif
-                    throw error(error::attachment_unavailable, doc["reason"].asString());
+                    throw error(error::attachment_unavailable, doc["reason"].get_string());
                 }
             }
 
@@ -98,22 +98,22 @@ namespace couchdb
             else
                 headers["Content-Type"] = _contentType;
 
-            Json::Value obj = comm_->get_data(getURL(true), headers, "PUT", data);
-            if (!obj.isObject())
+            json::value obj = comm_->get_data(getURL(true), headers, "PUT", data);
+            if (!obj.is_object())
                 throw error(error::attachment_unavailable);
 
-            if (obj.isMember("error") && obj.isMember("reason"))
+            if (obj.is_member("error") && obj.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Could not update attachment \"" + id_ + "\": " + obj["reason"].asString();
+                std::cout << "Could not update attachment \"" + id_ + "\": " + obj["reason"].get_string();
 #endif
-                throw error(error::attachment_unavailable, obj["reason"].asString());
+                throw error(error::attachment_unavailable, obj["reason"].get_string());
             }
 
-            if (!obj["ok"].asBool())
+            if (!obj["ok"].get_bool())
                 throw error(error::attachment_unavailable);
 
-            revision_ = obj["rev"].asString();
+            revision_ = obj["rev"].get_string();
             size_ = data.size();
 
             return *this;

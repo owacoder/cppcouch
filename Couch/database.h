@@ -79,28 +79,28 @@ namespace couchdb
 
         // Replicates this database to the target with given options, and returns CouchDB's response
         // Target must be an unencoded URL
-        virtual Json::Value replicate_to(const std::string &targetURL, const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual json::value replicate_to(const std::string &targetURL, const json::value &options = json::object_t() /* Object */) const
         {
             return replicate_remote(comm_->get_server_url() + "/" + url_encode(name_), targetURL, options);
         }
 
         // Replicates source to this database with given options, and returns CouchDB's response
         // Source must be an unencoded URL
-        virtual Json::Value replicate_from(const std::string &sourceURL, const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual json::value replicate_from(const std::string &sourceURL, const json::value &options = json::object_t() /* Object */) const
         {
             return replicate_remote(sourceURL, comm_->get_server_url() + "/" + url_encode(name_), options);
         }
 
         // Replicates source to target with given options, and returns CouchDB's response
         // Source or target must be unencoded URLs
-        virtual Json::Value replicate_remote(const std::string &sourceURL, const std::string &targetURL, const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual json::value replicate_remote(const std::string &sourceURL, const std::string &targetURL, const json::value &options = json::object_t() /* Object */) const
         {
-            Json::Value mOptions(options);
+            json::value mOptions(options);
             std::string source = sourceURL;
             std::string target = targetURL;
 
-            if (!mOptions.isObject())
-                mOptions = Json::Value();
+            if (!mOptions.is_object())
+                mOptions = json::value();
 
             mOptions["source"] = source;
             mOptions["target"] = target;
@@ -114,12 +114,12 @@ namespace couchdb
 
         // Cancels a replication (using the '_replicate' endpoint) and returns CouchDB's response
         // The JSON object parameter should be the response from one of the 'replicateX' functions above
-        virtual Json::Value cancel_replication(const Json::Value &replication /* Object */)
+        virtual json::value cancel_replication(const json::value &replication /* Object */)
         {
-            Json::Value rep(replication);
+            json::value rep(replication);
 
-            if (!rep.isObject())
-                rep = Json::Value();
+            if (!rep.is_object())
+                rep = json::value();
 
             rep["cancel"] = true;
             return comm_->get_data("/_replicate", "POST", json_to_string(rep));
@@ -128,7 +128,7 @@ namespace couchdb
         // Replicates this database target with given options, and returns CouchDB's response
         // Target must be an unencoded URL
         // If id is empty, an automatically generated one will be given to the document
-        virtual replication_document_type create_replication_to(const std::string &targetURL, const std::string &replicateDocId = "", const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual replication_document_type create_replication_to(const std::string &targetURL, const std::string &replicateDocId = "", const json::value &options = json::object_t() /* Object */) const
         {
             return create_replication_remote(comm_->get_server_url() + "/" + url_encode(name_), targetURL, replicateDocId, options);
         }
@@ -136,7 +136,7 @@ namespace couchdb
         // Replicates source to this database with given options, and returns CouchDB's response
         // Source must be an unencoded URL
         // If id is empty, an automatically generated one will be given to the document
-        virtual replication_document_type create_replication_from(const std::string &sourceURL, const std::string &replicateDocId = "", const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual replication_document_type create_replication_from(const std::string &sourceURL, const std::string &replicateDocId = "", const json::value &options = json::object_t() /* Object */) const
         {
             return create_replication_remote(sourceURL, comm_->get_server_url() + "/" + url_encode(name_), replicateDocId, options);
         }
@@ -144,17 +144,17 @@ namespace couchdb
         // Replicates source to target with given options, and returns CouchDB's response
         // Source or target must be unencoded URLs
         // If id is empty, an automatically generated one will be given to the document
-        virtual replication_document_type create_replication_remote(const std::string &sourceURL, const std::string &targetURL, const std::string &replicateDocId = "", const Json::Value &options = Json::Value(Json::objectValue) /* Object */) const
+        virtual replication_document_type create_replication_remote(const std::string &sourceURL, const std::string &targetURL, const std::string &replicateDocId = "", const json::value &options = json::object_t() /* Object */) const
         {
             std::string url("/_replicator/");
             std::string method("POST");
-            Json::Value mOptions(options);
+            json::value mOptions(options);
 
             std::string source = sourceURL;
             std::string target = targetURL;
 
-            if (!mOptions.isObject())
-                mOptions = Json::Value();
+            if (!mOptions.is_object())
+                mOptions = json::value();
 
             mOptions["source"] = source;
             mOptions["target"] = target;
@@ -165,40 +165,40 @@ namespace couchdb
                 method = "PUT";
             }
 
-            Json::Value response = comm_->get_data(url, method, json_to_string(mOptions));
-            if (!response.isObject())
+            json::value response = comm_->get_data(url, method, json_to_string(mOptions));
+            if (!response.is_object())
                 throw error(error::document_not_creatable);
 
-            if (response.isMember("error"))
+            if (response.is_member("error"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Replication document could not be created: " + response["reason"].asString();
+                std::cout << "Replication document could not be created: " + response["reason"].get_string();
 #endif
-                throw error(error::document_not_creatable, response["reason"].asString());
+                throw error(error::document_not_creatable, response["reason"].get_string());
             }
 
-            return replication_document_type(comm_, response["id"].asString(), response["rev"].asString());
+            return replication_document_type(comm_, response["id"].get_string(), response["rev"].get_string());
         }
 
         // A raw '/_bulk_docs' api of the current database
         // Returns the response from CouchDB (which should be an array)
-        virtual Json::Value bulk_update_raw(const Json::Value &docs /* Array */, const Json::Value &request = Json::Value(Json::objectValue) /* Object */)
+        virtual json::value bulk_update_raw(const json::value &docs /* Array */, const json::value &request = json::object_t() /* Object */)
         {
-            Json::Value obj(request);
+            json::value obj(request);
 
-            if (!obj.isObject())
-                obj = Json::Value(Json::objectValue);
+            if (!obj.is_object())
+                obj = json::object_t();
             obj["docs"] = docs;
 
             std::string doc_data = json_to_string(obj);
 
-            Json::Value response = comm_->get_data("/" + url_encode(get_db_name()) + "/_bulk_docs", "POST", doc_data);
-            if (!response.isArray())
+            json::value response = comm_->get_data("/" + url_encode(get_db_name()) + "/_bulk_docs", "POST", doc_data);
+            if (!response.is_array())
                 return response;
 
-            for (auto item: response)
+            for (auto item: response.get_array())
             {
-                if (item.isObject() && !item["ok"].asBool())
+                if (item.is_object() && !item["ok"].get_bool())
                     throw error(item["error"] == "conflict"? error::document_not_creatable: error::forbidden);
             }
 
@@ -207,29 +207,29 @@ namespace couchdb
 
         // Inserts several documents at one time in the current database
         // Returns the response from CouchDB (which should be an array)
-        virtual Json::Value bulk_insert(Json::Value docs /* Array */, const Json::Value &request = Json::Value(Json::objectValue) /* Object */)
+        virtual json::value bulk_insert(json::value docs /* Array */, const json::value &request = json::object_t() /* Object */)
         {
-            if (docs.isArray())
-                for (auto it = docs.begin(); it != docs.end(); ++it)
-                    if (it->isObject())
-                        it->removeMember("_rev");
+            if (docs.is_array())
+                for (auto it = docs.get_array().begin(); it != docs.get_array().end(); ++it)
+                    if (it->is_object())
+                        it->erase("_rev");
 
             return bulk_update_raw(docs, request);
         }
 
         // Deletes several documents at one time in the current database
         // Returns the response from CouchDB (which should be an array)
-        virtual Json::Value bulk_delete(const std::vector<document_type> &docs, const Json::Value &request = Json::Value(Json::objectValue) /* Object */)
+        virtual json::value bulk_delete(const std::vector<document_type> &docs, const json::value &request = json::object_t() /* Object */)
         {
-            Json::Value arr(Json::arrayValue);
+            json::value arr;
 
             for (auto d: docs)
             {
-                Json::Value obj(Json::objectValue);
+                json::value obj;
                 obj["_id"] = d.get_doc_id();
                 obj["_rev"] = d.get_doc_revision();
                 obj["_deleted"] = true;
-                arr.append(obj);
+                arr.push_back(obj);
             }
 
             return bulk_update_raw(arr, request);
@@ -238,19 +238,19 @@ namespace couchdb
         // Compacts the database manually if possible
         virtual database &compact()
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_) + "/_compact", "POST");
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_) + "/_compact", "POST");
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
-            if (response.isMember("error"))
+            if (response.is_member("error"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Compaction of database " << name_ << " failed: " << response["reason"].asString();
+                std::cout << "Compaction of database " << name_ << " failed: " << response["reason"].get_string();
 #endif
-                throw error(error::database_unavailable, response["reason"].asString());
+                throw error(error::database_unavailable, response["reason"].get_string());
             }
 
-            if (!response["ok"].asBool())
+            if (!response["ok"].get_bool())
                 throw error(error::database_unavailable);
 
             return *this;
@@ -260,13 +260,13 @@ namespace couchdb
         virtual std::string get_db_name() const {return name_;}
 
         // Returns CouchDB's information about the database
-        virtual Json::Value get_info() const
+        virtual json::value get_info() const
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_));
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_));
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
-            if (!response.isMember("db_name"))
+            if (!response.is_member("db_name"))
             {
 #ifdef CPPCOUCH_DEBUG
                 std::cout << "Database \"" + name_ + "\" not found.";
@@ -280,30 +280,30 @@ namespace couchdb
         // Lists all normal documents (excludes design documents)
         virtual std::vector<document_type> list_docs()
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
             std::vector<document_type> docs;
 
-            if (response["total_rows"].asInt64() > 0)
+            if (response["total_rows"].get_int() > 0)
             {
-                const Json::Value &rows = response["rows"];
-                if (!rows.isArray())
+                const json::value &rows = response["rows"];
+                if (!rows.is_array())
                     throw error(error::database_unavailable);
 
-                for (auto row: rows)
+                for (auto row: rows.get_array())
                 {
-                    if (!row.isObject())
+                    if (!row.is_object())
                         throw error(error::database_unavailable);
 
-                    if (row["id"].asString().find("_design/") != 0) // Ignore design documents
+                    if (row["id"].get_string().find("_design/") != 0) // Ignore design documents
                     {
-                        const Json::Value &value = row["value"];
-                        if (!value.isObject())
+                        const json::value &value = row["value"];
+                        if (!value.is_object())
                             throw error(error::database_unavailable);
 
-                        docs.push_back(document_type(comm_, name_, row["id"].asString(), value["rev"].asString()));
+                        docs.push_back(document_type(comm_, name_, row["id"].get_string(), value["rev"].get_string()));
                     }
                 }
             }
@@ -314,28 +314,28 @@ namespace couchdb
         // Lists all documents, normal or design
         virtual std::vector<document_type> list_all_docs()
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
             std::vector<document_type> docs;
 
-            if (response["total_rows"].asInt64() > 0)
+            if (response["total_rows"].get_int() > 0)
             {
-                const Json::Value &rows = response["rows"];
-                if (!rows.isArray())
+                const json::value &rows = response["rows"];
+                if (!rows.is_array())
                     throw error(error::database_unavailable);
 
-                for (auto row: rows)
+                for (auto row: rows.get_array())
                 {
-                    if (!row.isObject())
+                    if (!row.is_object())
                         throw error(error::database_unavailable);
 
-                    const Json::Value &value = row["value"];
-                    if (!value.isObject())
+                    const json::value &value = row["value"];
+                    if (!value.is_object())
                         throw error(error::database_unavailable);
 
-                    docs.push_back(document_type(comm_, name_, row["id"].asString(), value["rev"].asString()));
+                    docs.push_back(document_type(comm_, name_, row["id"].get_string(), value["rev"].get_string()));
                 }
             }
 
@@ -345,30 +345,30 @@ namespace couchdb
         // Lists all design documents
         virtual std::vector<design_document_type> list_design_docs()
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_) + "/_all_docs");
+            if (!response.is_object())
                 throw error(error::database_unavailable);
 
             std::vector<design_document_type> docs;
 
-            if (response["total_rows"].asInt64() > 0)
+            if (response["total_rows"].get_int() > 0)
             {
-                const Json::Value &rows = response["rows"];
-                if (!rows.isArray())
+                const json::value &rows = response["rows"];
+                if (!rows.is_array())
                     throw error(error::database_unavailable);
 
-                for (auto row: rows)
+                for (auto row: rows.get_array())
                 {
-                    if (!row.isObject())
+                    if (!row.is_object())
                         throw error(error::database_unavailable);
 
-                    if (row["id"].asString().find("_design/") == 0) // Only allow design documents
+                    if (row["id"].get_string().find("_design/") == 0) // Only allow design documents
                     {
-                        const Json::Value &value = row["value"];
-                        if (!value.isObject())
+                        const json::value &value = row["value"];
+                        if (!value.is_object())
                             throw error(error::database_unavailable);
 
-                        docs.push_back(design_document_type(comm_, name_, row["id"].asString(), value["rev"].asString()));
+                        docs.push_back(design_document_type(comm_, name_, row["id"].get_string(), value["rev"].get_string()));
                     }
                 }
             }
@@ -383,40 +383,40 @@ namespace couchdb
             if (rev.size() > 0)
                 url += "?rev=" + url_encode(rev);
 
-            Json::Value response = comm_->get_data(url);
-            if (!response.isObject())
+            json::value response = comm_->get_data(url);
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            if (!response.isMember("_id"))
+            if (!response.is_member("_id"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Document " + id + " (v" + rev + ") not found: " + response["reason"].asString();
+                std::cout << "Document " + id + " (v" + rev + ") not found: " + response["reason"].get_string();
 #endif
-                throw error(error::database_unavailable, response["reason"].asString());
+                throw error(error::database_unavailable, response["reason"].get_string());
             }
 
-            return document_type(comm_, name_, response["_id"].asString(), response["_rev"].asString());
+            return document_type(comm_, name_, response["_id"].get_string(), response["_rev"].get_string());
         }
 
         // Creates a document with given body
         // If id is empty, an automatically generated id will be given to the document
-        virtual document_type create_doc(const Json::Value &data /* Object */, const std::string &id = "")
+        virtual document_type create_doc(const json::value &data /* Object */, const std::string &id = "")
         {
             return create_doc(data, std::vector<attachment_type>(), id);
         }
 
         // Creates a document with given body and attachments
         // If id is empty, an automatically generated id will be given to the document
-        virtual document_type create_doc(Json::Value data /* Object */, const std::vector<attachment_type> &attachments,
+        virtual document_type create_doc(json::value data /* Object */, const std::vector<attachment_type> &attachments,
                                 const std::string &id = "")
         {
             if (attachments.size() > 0)
             {
-                Json::Value attachmentObj;
+                json::value attachmentObj;
 
                 for (attachment_type item: attachments)
                 {
-                    Json::Value attachmentData;
+                    json::value attachmentData;
 
                     attachmentData["data"] = item.get_data();
                     attachmentData["content_type"] = item.get_content_type();
@@ -439,19 +439,19 @@ namespace couchdb
                 method = "POST";
             }
 
-            Json::Value response = comm_->get_data(url, method, json_to_string(data));
-            if (!response.isObject())
+            json::value response = comm_->get_data(url, method, json_to_string(data));
+            if (!response.is_object())
                 throw error(error::document_not_creatable);
 
-            if (!response.isMember("id"))
+            if (!response.is_member("id"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Document could not be created: " + response["reason"].asString();
+                std::cout << "Document could not be created: " + response["reason"].get_string();
 #endif
-                throw error(error::document_not_creatable, response["reason"].asString());
+                throw error(error::document_not_creatable, response["reason"].get_string());
             }
 
-            return document_type(comm_, name_, response["id"].asString(), response["rev"].asString());
+            return document_type(comm_, name_, response["id"].get_string(), response["rev"].get_string());
         }
 
         // Ensures a document exists and returns it
@@ -463,11 +463,11 @@ namespace couchdb
             try {return get_doc(id);}
             catch (const error &e) {if (e.type() != error::content_not_found && e.type() != error::document_unavailable) throw;}
 
-            return create_doc(Json::Value(Json::objectValue), std::vector<attachment_type>(), id);
+            return create_doc(json::object_t(), std::vector<attachment_type>(), id);
         }
 
         // Creates a document with given body and attachments
-        virtual document_type ensure_doc_exists(const std::string &id, Json::Value data /* Object */)
+        virtual document_type ensure_doc_exists(const std::string &id, json::value data /* Object */)
         {
             // This is specifically ordered to attempt to get the document first because
             // trying to create the document with its ID already in existence will not cause an
@@ -475,7 +475,7 @@ namespace couchdb
             try {return get_doc(id).set_data(data);}
             catch (const error &e) {if (e.type() != error::content_not_found && e.type() != error::document_unavailable) throw;}
 
-            return create_doc(Json::Value(Json::objectValue), std::vector<attachment_type>(), id);
+            return create_doc(json::object_t(), std::vector<attachment_type>(), id);
         }
 
         // Ensures the document with given name is deleted
@@ -494,40 +494,40 @@ namespace couchdb
             if (rev.size() > 0)
                 url += "?rev=" + url_encode(rev);
 
-            Json::Value response = comm_->get_data(url);
-            if (!response.isObject())
+            json::value response = comm_->get_data(url);
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            if (!response.isMember("_id"))
+            if (!response.is_member("_id"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Design document " + id + " (v" + rev + ") not found: " + response["error"].asString();
+                std::cout << "Design document " + id + " (v" + rev + ") not found: " + response["error"].get_string();
 #endif
-                throw error(error::document_unavailable, response["reason"].asString());
+                throw error(error::document_unavailable, response["reason"].get_string());
             }
 
-            return design_document_type(comm_, name_, response["_id"].asString(), response["_rev"].asString());
+            return design_document_type(comm_, name_, response["_id"].get_string(), response["_rev"].get_string());
         }
 
         // Creates a design document with given body
         // If id is empty, an automatically generated id will be given to the document
-        virtual design_document_type create_design_doc(const Json::Value &data /* Object */, const std::string &id = "")
+        virtual design_document_type create_design_doc(const json::value &data /* Object */, const std::string &id = "")
         {
             return create_design_doc(data, std::vector<attachment_type>(), id);
         }
 
         // Creates a design document with given body and attachments
         // If id is empty, an automatically generated id will be given to the document
-        virtual design_document_type create_design_doc(Json::Value data /* Object */, const std::vector<attachment_type> &attachments,
+        virtual design_document_type create_design_doc(json::value data /* Object */, const std::vector<attachment_type> &attachments,
                                 const std::string &id = "")
         {
             if (attachments.size() > 0)
             {
-                Json::Value attachmentObj;
+                json::value attachmentObj;
 
                 for (attachment_type item: attachments)
                 {
-                    Json::Value attachmentData;
+                    json::value attachmentData;
 
                     attachmentData["data"] = item.get_data();
                     attachmentData["content_type"] = item.get_content_type();
@@ -550,38 +550,38 @@ namespace couchdb
                 method = "POST";
             }
 
-            Json::Value response = comm_->get_data(url, method, json_to_string(data));
-            if (!response.isObject())
+            json::value response = comm_->get_data(url, method, json_to_string(data));
+            if (!response.is_object())
                 throw error(error::document_not_creatable);
 
-            if (!response.isMember("id"))
+            if (!response.is_member("id"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Design document could not be created: " + response["reason"].asString();
+                std::cout << "Design document could not be created: " + response["reason"].get_string();
 #endif
-                throw error(error::document_not_creatable, response["reason"].asString());
+                throw error(error::document_not_creatable, response["reason"].get_string());
             }
 
-            return design_document_type(comm_, name_, response["id"].asString(), response["rev"].asString());
+            return design_document_type(comm_, name_, response["id"].get_string(), response["rev"].get_string());
         }
 
         // Deletes this database
         // NOTE: this is an IRREVERSABLE operation!
         virtual database &remove()
         {
-            Json::Value response = comm_->get_data("/" + url_encode(name_), "DELETE");
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(name_), "DELETE");
+            if (!response.is_object())
                 throw error(error::database_not_deletable);
 
-            if (response.isMember("error"))
+            if (response.is_member("error"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Unable to delete database \"" + name_ + "\": " + response["reason"].asString();
+                std::cout << "Unable to delete database \"" + name_ + "\": " + response["reason"].get_string();
 #endif
-                throw error(error::database_not_deletable, response["reason"].asString());
+                throw error(error::database_not_deletable, response["reason"].get_string());
             }
 
-            if (!response["ok"].asBool())
+            if (!response["ok"].get_bool())
                 throw error(error::database_not_deletable);
 
             return *this;

@@ -16,15 +16,15 @@ namespace couchdb
     struct view_result
     {
         view_result() {}
-        view_result(const Json::Value &key, const Json::Value &value, const std::string &documentName, const std::string &documentURL)
+        view_result(const json::value &key, const json::value &value, const std::string &documentName, const std::string &documentURL)
             : key(key)
             , value(value)
             , documentName(documentName)
             , documentURL(documentURL)
         {}
 
-        Json::Value key;
-        Json::Value value;
+        json::value key;
+        json::value value;
         std::string documentName;
         std::string documentURL;
     };
@@ -37,7 +37,7 @@ namespace couchdb
         view_query() : useLiteralStrings(true) {}
 
         std::string key;
-        Json::Value value;
+        json::value value;
         bool useLiteralStrings; //the string of 'value' will be surrounded by quotes if false
     };
 
@@ -87,12 +87,12 @@ namespace couchdb
             for (view_query viewQuery: _queries)
             {
                 std::string val;
-                if (viewQuery.value.isString())
+                if (viewQuery.value.is_string())
                 {
                     if (viewQuery.useLiteralStrings)
-                        val = viewQuery.value.asString();
+                        val = viewQuery.value.get_string();
                     else
-                        val = "\"" + viewQuery.value.asString() + "\"";
+                        val = "\"" + viewQuery.value.get_string() + "\"";
                 }
                 else
                     val = json_to_string(viewQuery.value);
@@ -110,12 +110,12 @@ namespace couchdb
         view_results query(const view_query &viewQuery) const
         {
             std::string val;
-            if (viewQuery.value.isString())
+            if (viewQuery.value.is_string())
             {
                 if (viewQuery.useLiteralStrings)
-                    val = viewQuery.value.asString();
+                    val = viewQuery.value.get_string();
                 else
-                    val = "\"" + viewQuery.value.asString() + "\"";
+                    val = "\"" + viewQuery.value.get_string() + "\"";
             }
             else
                 val = json_to_string(viewQuery.value);
@@ -157,7 +157,7 @@ namespace couchdb
     protected:
         view_results query(const std::string &queries) const
         {
-            Json::Value response;
+            json::value response;
             view_results results;
             std::string url = "/" + url_encode(db) + "/" + url_encode_doc_id(document) + "/" + url_encode_view_id(id);
 
@@ -168,20 +168,20 @@ namespace couchdb
                 url = add_url_query(url, queries);
 
             response = comm->get_data(url);
-            if (!response.isObject())
+            if (!response.is_object())
                 throw error(error::view_unavailable);
 
             response = response["rows"];
-            if (!response.isArray())
+            if (!response.is_array())
                 throw error(error::view_unavailable);
 
-            for (Json::Value val: response)
+            for (json::value val: response)
             {
-                if (val.isObject())
+                if (val.is_object())
                     results.push_back(view_result(val["key"],
                                                   val["value"],
-                                                  val["id"].asString(),
-                                                  get_db_url() + "/" + val["id"].asString()));
+                                                  val["id"].get_string(),
+                                                  get_db_url() + "/" + val["id"].get_string()));
             }
 
             return results;

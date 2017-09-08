@@ -100,13 +100,13 @@ namespace couchdb
         const state &get_current_state() const {return d;}
         void set_current_state(const state &_state) {d = _state;}
 
-        Json::Value get_data(const std::string &url, const std::string &method = "GET",
+        json::value get_data(const std::string &url, const std::string &method = "GET",
                            const std::string &data = "", bool cacheable = false)
         {
             return get_data(url, method, data, header_map(), cacheable);
         }
 
-        Json::Value get_data(const std::string &url, const header_map &headers,
+        json::value get_data(const std::string &url, const header_map &headers,
                            const std::string &method = "GET",
                            const std::string &data = "", bool cacheable = false)
         {
@@ -166,7 +166,7 @@ namespace couchdb
         }
 
     private:
-        Json::Value get_data(const std::string &url, const std::string &method,
+        json::value get_data(const std::string &url, const std::string &method,
                            const std::string &data, const header_map &headers, bool cacheable)
         {
             get_raw_data(url, method, data, headers, cacheable);

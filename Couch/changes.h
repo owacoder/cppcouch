@@ -3,7 +3,7 @@
 
 #include "communication.h"
 #include "connection.h"
-#include <json/json.h>
+#include <json.h>
 
 #if 0
 namespace couchdb
@@ -16,7 +16,7 @@ namespace couchdb
 
     class signal_base
     {
-        void change_occured(const Json::Value &change) = 0;
+        void change_occured(const json::value &change) = 0;
     };
 
     template<typename http_client, typename signal_type>

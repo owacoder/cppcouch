@@ -50,7 +50,7 @@ namespace couchdb
         {
             if (!this->get_supports_clusters())
             {
-                if (!this->comm->get_data("/_restart", "POST")["ok"].asBool())
+                if (!this->comm->get_data("/_restart", "POST")["ok"].get_bool())
                     throw error(error::request_failed);
             }
             else if (node_name_.empty()) // If clusters are supported and there is no node name, this is being called with an invalid node reference
@@ -67,7 +67,7 @@ namespace couchdb
                     url.set_port(node_local_port_);
                     this->comm->set_server_url(url.to_string());
 
-                    if (!this->comm->get_data("/_restart", "POST")["ok"].asBool())
+                    if (!this->comm->get_data("/_restart", "POST")["ok"].get_bool())
                         throw error(error::request_failed);
 
                     this->comm->set_current_state(save);
@@ -82,20 +82,20 @@ namespace couchdb
         }
 
         // Returns the entire CouchDB config object
-        virtual Json::Value get_config() {return this->comm->get_data(get_config_node_name() + "/_config");}
+        virtual json::value get_config() {return this->comm->get_data(get_config_node_name() + "/_config");}
 
         // Returns the CouchDB config section specified
-        virtual Json::Value get_config_section(const std::string &section) {return this->comm->get_data(get_config_node_name() + "/_config/" + url_encode(section));}
+        virtual json::value get_config_section(const std::string &section) {return this->comm->get_data(get_config_node_name() + "/_config/" + url_encode(section));}
 
         // Returns the specified CouchDB config key of specified section of config
-        virtual Json::Value get_config_key(const std::string &section, const std::string &key)
+        virtual json::value get_config_key(const std::string &section, const std::string &key)
         {
             return this->comm->get_data(get_config_node_name() + "/_config/" + url_encode(section) + "/" + url_encode(key));
         }
 
         // Sets the specified CouchDB config key of specified section of config
         // Returns the old value of the key
-        virtual Json::Value set_config_key(const std::string &section, const std::string &key, const Json::Value &value)
+        virtual json::value set_config_key(const std::string &section, const std::string &key, const json::value &value)
         {
             return this->comm->get_data(get_config_node_name() + "/_config/" + url_encode(section) + "/" + url_encode(key),
                                                              "PUT",
@@ -104,13 +104,13 @@ namespace couchdb
 
         // Deletes the specified CouchDB config key of specified section of config
         // Returns the value of the key before it was deleted
-        virtual Json::Value delete_config_key(const std::string &section, const std::string &key)
+        virtual json::value delete_config_key(const std::string &section, const std::string &key)
         {
             return this->comm->get_data(get_config_node_name() + "/_config/" + url_encode(section) + "/" + url_encode(key), "DELETE");
         }
 
         // Tries to create a new CouchDB admin
-        virtual Json::Value create_admin(const std::string &name, const std::string &pass)
+        virtual json::value create_admin(const std::string &name, const std::string &pass)
         {
             return this->comm->get_data(get_config_node_name() + "/_config/admins/" + url_encode(name), "PUT", json_to_string(string_to_json(pass)));
         }
@@ -119,18 +119,18 @@ namespace couchdb
         virtual std::vector<std::string> list_admin_names()
         {
             std::vector<std::string> list;
-            Json::Value response = this->comm->get_data(get_config_node_name() + "/_config/admins", "GET");
-            if (!response.isObject())
+            json::value response = this->comm->get_data(get_config_node_name() + "/_config/admins", "GET");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
-            for (auto it = response.begin(); it != response.end(); ++it)
-                list.push_back(it.key().asString());
+            for (auto it = response.get_object().begin(); it != response.get_object().end(); ++it)
+                list.push_back(it->first);
 
             return list;
         }
 
         // Tries to remove a CouchDB admin
-        virtual Json::Value delete_admin(const std::string &name)
+        virtual json::value delete_admin(const std::string &name)
         {
             return this->comm->get_data(get_config_node_name() + "/_config/admins/" + url_encode(name), "DELETE");
         }

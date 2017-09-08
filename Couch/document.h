@@ -21,7 +21,7 @@ namespace couchdb
     //a callback type for resolving conflicts
     //the first parameter is a list of contents of conflicting documents
     //the second parameter is a pointer to the winning document. set the value of the referenced object to a/the winning document
-    typedef void (*DocumentConflictResolver)(const Json::Value & /* conflicting documents */, Json::Value * /* document to write back to couch */);
+    typedef void (*DocumentConflictResolver)(const json::value & /* conflicting documents */, json::value * /* document to write back to couch */);
 
     template<typename http_client> class database;
     template<typename http_client> class locator;
@@ -69,20 +69,20 @@ namespace couchdb
         // Returns a document referencing the latest revision of this document, with a valid '_rev' value
         virtual document get_latest_revision() const
         {
-            Json::Value response = comm_->get_data("/" + url_encode(db_) + "/_all_docs?key=" + url_encode("\"" + id_ + "\""));
-            if (!response.isObject())
+            json::value response = comm_->get_data("/" + url_encode(db_) + "/_all_docs?key=" + url_encode("\"" + id_ + "\""));
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            int numRows = response["total_rows"].asInt();
-            const Json::Value &rows = response["rows"];
+            int numRows = response["total_rows"].get_int();
+            const json::value &rows = response["rows"];
 
-            if (numRows > 0 && rows.isArray() && rows.size())
+            if (numRows > 0 && rows.is_array() && rows.size())
             {
-                const Json::Value &docObj = rows[0];
-                if (!docObj.isObject() || !docObj["value"].isObject())
+                const json::value &docObj = rows[static_cast<size_t>(0)];
+                if (!docObj.is_object() || !docObj["value"].is_object())
                     throw error(error::document_unavailable);
 
-                return document(comm_, db_, id_, docObj["value"]["rev"].asString());
+                return document(comm_, db_, id_, docObj["value"]["rev"].get_string());
             }
             else
                 throw error(error::document_unavailable);
@@ -117,7 +117,7 @@ namespace couchdb
         // Returns true if the document is active, false if it has been deleted
         virtual bool is_deleted() const
         {
-            Json::Value val;
+            json::value val;
 
             try {val = get_data();}
             catch (const error &e)
@@ -127,8 +127,8 @@ namespace couchdb
                 throw;
             }
 
-            if (val.isObject())
-                return val["_deleted"].asBool();
+            if (val.is_object())
+                return val["_deleted"].get_bool();
             return true;
         }
 
@@ -137,37 +137,37 @@ namespace couchdb
         {
             couchdb::revisions revisions;
 
-            Json::Value value = comm_->get_data(get_doc_url_path(false) + "?revs_info=true");
-            if (!value.isObject())
+            json::value value = comm_->get_data(get_doc_url_path(false) + "?revs_info=true");
+            if (!value.is_object())
                 throw error(error::document_unavailable);
 
-            const Json::Value &array = value["_revs_info"];
-            if (!array.isArray())
+            const json::value &array = value["_revs_info"];
+            if (!array.is_array())
                 throw error(error::document_unavailable);
 
-            for (auto rev: array)
+            for (auto rev: array.get_array())
             {
-                if (rev.isObject())
-                    revisions.push_back(revision(rev["rev"].asString(), rev["status"].asString()));
+                if (rev.is_object())
+                    revisions.push_back(revision(rev["rev"].get_string(), rev["status"].get_string()));
             }
 
             return revisions;
         }
 
         // Returns the body of the document with given queries
-        virtual Json::Value get_data(const queries &_queries = queries()) const
+        virtual json::value get_data(const queries &_queries = queries()) const
         {
-            Json::Value obj = comm_->get_data(add_url_queries(get_doc_url_path(true), _queries));
-            if (!obj.isObject())
+            json::value obj = comm_->get_data(add_url_queries(get_doc_url_path(true), _queries));
+            if (!obj.is_object())
                 throw error(error::document_unavailable);
 
-            if (!obj.isMember("_id") && !obj.isMember("_rev") &&
-                    obj.isMember("error") && obj.isMember("reason"))
+            if (!obj.is_member("_id") && !obj.is_member("_rev") &&
+                    obj.is_member("error") && obj.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Document \"" + id_ + "\" not found: " + obj["reason"].asString();
+                std::cout << "Document \"" + id_ + "\" not found: " + obj["reason"].get_string();
 #endif
-                throw error(error::document_unavailable, obj["reason"].asString());
+                throw error(error::document_unavailable, obj["reason"].get_string());
             }
 
             return obj;
@@ -175,29 +175,29 @@ namespace couchdb
 
         // Returns the body of the document with given queries
         // If include_revision_in_request is false, the most up-to-date revision is used
-        virtual Json::Value get_data(bool include_revision_in_request, const queries &queries = queries()) const
+        virtual json::value get_data(bool include_revision_in_request, const queries &queries = queries()) const
         {
-            Json::Value obj = comm_->get_data(add_url_queries(get_doc_url_path(include_revision_in_request), queries));
-            if (!obj.isObject())
+            json::value obj = comm_->get_data(add_url_queries(get_doc_url_path(include_revision_in_request), queries));
+            if (!obj.is_object())
                 throw error(error::document_unavailable);
 
-            if (!obj.isMember("_id") && !obj.isMember("_rev") &&
-                    obj.isMember("error") && obj.isMember("reason"))
+            if (!obj.is_member("_id") && !obj.is_member("_rev") &&
+                    obj.is_member("error") && obj.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Document \"" + id_ + "\" not found: " + obj["reason"].asString();
+                std::cout << "Document \"" + id_ + "\" not found: " + obj["reason"].get_string();
 #endif
-                throw error(error::document_unavailable, obj["reason"].asString());
+                throw error(error::document_unavailable, obj["reason"].get_string());
             }
 
             return obj;
         }
 
         // Returns the body of the document with conflict resolution
-        virtual Json::Value get_data_with_conflict_resolver(DocumentConflictResolver callback, const queries &_queries = queries())
+        virtual json::value get_data_with_conflict_resolver(DocumentConflictResolver callback, const queries &_queries = queries())
         {
             queries new_queries(_queries);
-            Json::Value data, docs(Json::arrayValue);
+            json::value data, docs;
             bool found = false;
 
             for (query q: _queries)
@@ -212,30 +212,30 @@ namespace couchdb
 
             // Get initial document, listing conflicts
             data = get_data(false, new_queries);
-            if (!data.isObject())
+            if (!data.is_object())
                 throw error(error::document_unavailable);
 
-            Json::Value conflicts = data["_conflicts"];
-            if (!conflicts.isArray())
+            json::value conflicts = data["_conflicts"];
+            if (!conflicts.is_array())
                 throw error(error::document_unavailable);
 
-            conflicts.append(data["_rev"].asString());
+            conflicts.push_back(data["_rev"].get_string());
 
             // Get the content of each conflict
-            for (auto conflict: conflicts)
-                docs.append(document(comm_, db_, id_, conflict.asString()).get_data(_queries));
+            for (auto conflict: conflicts.get_array())
+                docs.push_back(document(comm_, db_, id_, conflict.get_string()).get_data(_queries));
 
             //if there are conflicts
             if (docs.size() > 1)
             {
-                Json::Value result = data;
-                result.removeMember("_conflicts");
+                json::value result = data;
+                result.erase("_conflicts");
 
                 // Attempt to resolve
                 callback(docs, &result);
 
                 // Update the current document
-                Json::Value request(Json::objectValue);
+                json::value request;
 
                 /* TODO: all_or_nothing option does not exist in CouchDB 2.0.0 */
                 request["all_or_nothing"] = true;
@@ -245,9 +245,9 @@ namespace couchdb
                 result["_id"] = docs[0]["_id"]; // Overwrite immutable fields to correct data
                 result["_rev"] = docs[0]["_rev"]; // Ditto
                 docs[0] = result;
-                for (auto it = docs.begin(); it != docs.end(); ++it)
+                for (auto it = docs.get_array().begin(); it != docs.get_array().end(); ++it)
                     (*it)["_deleted"] = true;
-                docs[0].removeMember("_deleted");
+                docs[0].erase("_deleted");
 
                 database<http_client>(comm_, db_).bulk_update_raw(docs, request);
 
@@ -255,43 +255,43 @@ namespace couchdb
             }
 
             // If there are no conflicts, just return the document
-            data.removeMember("_conflicts");
+            data.erase("_conflicts");
             return data;
         }
 
         // Sets the body of the document with given fields,
         // and updates this document to point to the new revision
         // IMPORTANT: No other document objects will be updated to the new revision
-        virtual document &set_data(Json::Value data)
+        virtual document &set_data(json::value data)
         {
-            Json::Value response = comm_->get_data(get_doc_url_path(true));
-            if (!response.isObject())
+            json::value response = comm_->get_data(get_doc_url_path(true));
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            if (!data.isObject())
-                data = Json::Value(Json::objectValue);
+            if (!data.is_object())
+                data = json::value();
 
-            for (auto it = response.begin(); it != response.end(); ++it)
+            for (auto it = response.get_object().begin(); it != response.get_object().end(); ++it)
             {
-                std::string key = it.key().asString();
+                std::string key = it->first;
                 if ((key == "_id" || key == "_rev") || // Reserved field? These cannot be modified, so we need to make sure they don't change
-                    (key.find('_') == 0 && !data.isMember(key))) // Non-included reserved field, we should include it (reserved fields are those beginning with an underscore '_')
+                    (key.find('_') == 0 && !data.is_member(key))) // Non-included reserved field, we should include it (reserved fields are those beginning with an underscore '_')
                     data[key] = response[key];
             }
 
             response = comm_->get_data(get_doc_url_path(false), "PUT", json_to_string(data));
-            if (!response.isObject())
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            if (!response.isMember("id"))
+            if (!response.is_member("id"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Document could not be created: " + response["reason"].asString();
+                std::cout << "Document could not be created: " + response["reason"].get_string();
 #endif
-                throw error(error::document_unavailable, response["reason"].asString());
+                throw error(error::document_unavailable, response["reason"].get_string());
             }
 
-            revision_ = response["rev"].asString();
+            revision_ = response["rev"].get_string();
 
             return *this;
         }
@@ -310,21 +310,21 @@ namespace couchdb
             typename base::header_map headers;
             headers["Content-Type"] = contentType;
 
-            Json::Value response = comm_->get_data(url, headers, "PUT", data);
-            if (!response.isObject())
+            json::value response = comm_->get_data(url, headers, "PUT", data);
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
-            if (response.isMember("error") && response.isMember("reason"))
+            if (response.is_member("error") && response.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Could not create attachment \"" + attachmentId + "\": " + response["reason"].asString();
+                std::cout << "Could not create attachment \"" + attachmentId + "\": " + response["reason"].get_string();
 #endif
-                throw error(error::attachment_not_creatable, response["reason"].asString());
+                throw error(error::attachment_not_creatable, response["reason"].get_string());
             }
 
-            revision_ = response["rev"].asString();
+            revision_ = response["rev"].get_string();
 
-            if (!response["ok"].asBool())
+            if (!response["ok"].get_bool())
                 throw error(error::attachment_not_creatable);
 
             return attachment_type(comm_, db_, id_, attachmentId, revision_, contentType, data.size());
@@ -353,11 +353,11 @@ namespace couchdb
         // Returns the attachment with the given id if possible
         virtual attachment_type get_attachment(const std::string &attachmentId) const
         {
-            Json::Value response = get_data();
-            if (!response.isObject())
+            json::value response = get_data();
+            if (!response.is_object())
                 throw error(error::attachment_unavailable);
 
-            if (!response.isMember("_attachments"))
+            if (!response.is_member("_attachments"))
             {
 #ifdef CPPCOUCH_DEBUG
                 std::cout << "No Attachments";
@@ -366,7 +366,7 @@ namespace couchdb
             }
 
             response = response["_attachments"];
-            if (!response.isObject() || !response.isMember(attachmentId))
+            if (!response.is_object() || !response.is_member(attachmentId))
             {
 #ifdef CPPCOUCH_DEBUG
                 std::cout << "No attachment found with id \"" + attachmentId + "\"";
@@ -375,7 +375,7 @@ namespace couchdb
             }
 
             response = response[attachmentId];
-            if (!response.isObject())
+            if (!response.is_object())
                 throw error(error::attachment_unavailable);
 
             return attachment_type(comm_,
@@ -383,31 +383,31 @@ namespace couchdb
                                    id_,
                                    attachmentId,
                                    revision_,
-                                   response["content_type"].asString(),
-                                   response.get("length", -1).asInt64());
+                                   response["content_type"].get_string(),
+                                   response["length"].get_int(-1));
         }
 
         // Returns a list of all attachments for this document
         virtual std::vector<attachment_type> list_all_attachments() const
         {
-            Json::Value response = get_data();
-            if (!response.isObject())
+            json::value response = get_data();
+            if (!response.is_object())
                 throw error(error::document_unavailable);
 
             std::vector<attachment_type> vAttachments;
-            if (!response.isMember("_attachments")) // No attachments with document?
+            if (!response.is_member("_attachments")) // No attachments with document?
                 return vAttachments;
 
-            const Json::Value &attachments = response["_attachments"];
-            if (!response.isObject())
+            const json::value &attachments = response["_attachments"];
+            if (!attachments.is_object())
                 throw error(error::attachment_unavailable);
 
-            for (auto it = attachments.begin(); it != attachments.end(); ++it)
+            for (auto it = attachments.get_object().begin(); it != attachments.get_object().end(); ++it)
             {
-                if (it->isObject())
-                    vAttachments.push_back(attachment_type(comm_, db_, id_, it.key().asString(), revision_,
-                                                   (*it)["content_type"].asString(),
-                                                   it->get("length", -1).asInt64()));
+                if (it->second.is_object())
+                    vAttachments.push_back(attachment_type(comm_, db_, id_, it->first, revision_,
+                                                   it->second["content_type"].get_string(),
+                                                   it->second["length"].get_int(-1)));
             }
 
             return vAttachments;
@@ -423,21 +423,21 @@ namespace couchdb
             if (revision_.size() > 0)
                 url += "?rev=" + url_encode(revision_);
 
-            Json::Value response = comm_->get_data(url, "DELETE");
-            if (!response.isObject())
+            json::value response = comm_->get_data(url, "DELETE");
+            if (!response.is_object())
                 throw error(error::attachment_not_deletable);
 
-            if (response.isMember("error") && response.isMember("reason"))
+            if (response.is_member("error") && response.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Could not delete attachment \"" + attachmentId + "\": " + response["reason"].asString();
+                std::cout << "Could not delete attachment \"" + attachmentId + "\": " + response["reason"].get_string();
 #endif
-                throw error(error::attachment_not_deletable, response["reason"].asString());
+                throw error(error::attachment_not_deletable, response["reason"].get_string());
             }
 
-            revision_ = response["rev"].asString();
+            revision_ = response["rev"].get_string();
 
-            if (!response["ok"].asBool())
+            if (!response["ok"].get_bool())
                 throw error(error::attachment_not_deletable);
 
             return *this;
@@ -462,30 +462,30 @@ namespace couchdb
             else
                 headers["Destination"] = url_encode_doc_id(targetId);
 
-            Json::Value response = comm_->get_data(get_doc_url_path(true), headers, "COPY");
-            if (!response.isObject())
+            json::value response = comm_->get_data(get_doc_url_path(true), headers, "COPY");
+            if (!response.is_object())
                 throw error(error::document_not_creatable);
 
-            if (response.isMember("error") && response.isMember("reason"))
+            if (response.is_member("error") && response.is_member("reason"))
             {
 #ifdef CPPCOUCH_DEBUG
-                std::cout << "Could not copy document \"" + id_ + "\" to \"" + targetId + "\": " + response["reason"].asString();
+                std::cout << "Could not copy document \"" + id_ + "\" to \"" + targetId + "\": " + response["reason"].get_string();
 #endif
-                throw error(error::document_not_creatable, response["reason"].asString());
+                throw error(error::document_not_creatable, response["reason"].get_string());
             }
 
             std::string newId = url_encode_doc_id(targetId);
-            if (response.isMember("id"))
-                newId = response["id"].asString();
+            if (response.is_member("id"))
+                newId = response["id"].get_string();
 
-            return document(comm_, db_, newId, response["rev"].asString());
+            return document(comm_, db_, newId, response["rev"].get_string());
         }
 
         // Deletes this document
         virtual document &remove()
         {
-            Json::Value response = comm_->get_data(get_doc_url_path(true), "DELETE");
-            if (!response.isObject() || !response["ok"].asBool())
+            json::value response = comm_->get_data(get_doc_url_path(true), "DELETE");
+            if (!response.is_object() || !response["ok"].get_bool())
                 throw error(error::document_not_deletable);
 
             return *this;

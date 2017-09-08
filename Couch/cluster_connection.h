@@ -105,16 +105,16 @@ namespace couchdb
         virtual std::vector<std::string> list_all_node_names()
         {
             std::vector<std::string> result;
-            Json::Value response = this->comm->get_data("/_membership");
-            if (!response.isObject())
+            json::value response = this->comm->get_data("/_membership");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
             response = response["all_nodes"];
-            if (!response.isArray())
+            if (!response.is_array())
                 throw error(error::bad_response);
 
-            for (auto n: response)
-                result.push_back(n.asString());
+            for (auto n: response.get_array())
+                result.push_back(n.get_string());
 
             return result;
         }
@@ -123,16 +123,16 @@ namespace couchdb
         virtual std::vector<std::shared_ptr<node_type>> list_all_nodes()
         {
             std::vector<std::shared_ptr<node_type>> result;
-            Json::Value response = this->comm->get_data("/_membership");
-            if (!response.isObject())
+            json::value response = this->comm->get_data("/_membership");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
             response = response["all_nodes"];
-            if (!response.isArray())
+            if (!response.is_array())
                 throw error(error::bad_response);
 
-            for (auto n: response)
-                result.push_back(std::make_shared<node_type>(node_type(this->node_local_port_, n.asString(), this->comm)));
+            for (auto n: response.get_array())
+                result.push_back(std::make_shared<node_type>(node_type(this->node_local_port_, n.get_string(), this->comm)));
 
             return result;
         }
@@ -141,16 +141,16 @@ namespace couchdb
         virtual std::vector<std::string> list_cluster_node_names()
         {
             std::vector<std::string> result;
-            Json::Value response = this->comm->get_data("/_membership");
-            if (!response.isObject())
+            json::value response = this->comm->get_data("/_membership");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
             response = response["cluster_nodes"];
-            if (!response.isArray())
+            if (!response.is_array())
                 throw error(error::bad_response);
 
-            for (auto n: response)
-                result.push_back(n.asString());
+            for (auto n: response.get_array())
+                result.push_back(n.get_string());
 
             return result;
         }
@@ -159,16 +159,16 @@ namespace couchdb
         virtual std::vector<node_type> list_cluster_nodes()
         {
             std::vector<node_type> result;
-            Json::Value response = this->comm->get_data("/_membership");
-            if (!response.isObject())
+            json::value response = this->comm->get_data("/_membership");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
             response = response["cluster_nodes"];
-            if (!response.isArray())
+            if (!response.is_array())
                 throw error(error::bad_response);
 
-            for (auto n: response)
-                result.push_back(node_type(this->node_local_port_, n.asString(), this->comm));
+            for (auto n: response.get_array())
+                result.push_back(node_type(this->node_local_port_, n.get_string(), this->comm));
 
             return result;
         }
@@ -176,11 +176,11 @@ namespace couchdb
         // Returns response from /_cluster_setup endpoint
         std::string get_initialization_state()
         {
-            Json::Value response = this->comm->get_data("/_cluster_setup", "GET");
-            if (!response.isObject())
+            json::value response = this->comm->get_data("/_cluster_setup", "GET");
+            if (!response.is_object())
                 throw error(error::bad_response);
 
-            return response["state"].asString();
+            return response["state"].get_string();
         }
 
         // Attempts to initialize this server as a single-node configuration
@@ -194,7 +194,7 @@ namespace couchdb
                                                       const user &admin,
                                                       const std::vector<std::string> &dbs_to_create = {})
         {
-            Json::Value request;
+            json::value request;
 
             if (bind_address.empty() || admin.username().empty() || admin.password().empty())
                 throw error(error::invalid_argument, "cluster_connection<http_client>::initialize_as_single_node() received a bad parameter");
@@ -208,7 +208,7 @@ namespace couchdb
             if (!dbs_to_create.empty())
             {
                 for (auto db: dbs_to_create)
-                    request["ensure_dbs_exist"].append(db);
+                    request["ensure_dbs_exist"].push_back(db);
             }
 
             this->comm->get_data("/_cluster_setup", "POST", json_to_string(request));
@@ -228,7 +228,7 @@ namespace couchdb
                                                       unsigned short port,
                                                       const user &admin)
         {
-            Json::Value request;
+            json::value request;
 
             if (bind_address.empty() || admin.username().empty() || admin.password().empty())
                 throw error(error::invalid_argument, "cluster_connection<http_client>::initialize_as_cluster_node() received a bad parameter");
@@ -268,7 +268,7 @@ namespace couchdb
             {
                 typename http_client::url_type node_url;
                 node_url.from_string(node);
-                Json::Value request;
+                json::value request;
 
                 request["action"] = "enable_cluster";
                 request["bind_address"] = bind_address;
@@ -286,7 +286,7 @@ namespace couchdb
                 if (node_url.get_host().empty() || node_url.get_username().empty() || node_url.get_password().empty())
                     throw error(error::invalid_argument, "cluster_connection<http_client>::initialize_cluster() received a bad parameter");
 
-                request = Json::Value();
+                request = json::value();
                 request["action"] = "add_node";
                 request["host"] = node_url.get_host();
                 if (node_url.get_port())
@@ -303,7 +303,7 @@ namespace couchdb
         // finish_initialize_as_cluster() must be called after the cluster nodes are all linked.
         cluster_connection &finish_initialize_as_cluster()
         {
-            Json::Value request;
+            json::value request;
 
             request["action"] = "finish_cluster";
 

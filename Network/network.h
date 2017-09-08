@@ -140,7 +140,7 @@ namespace couchdb
                         sclient->setKeepAlive(true);
                     }
 
-                    Poco::Net::HTTPRequest request(method, url);
+                    Poco::Net::HTTPRequest request(method, url, "HTTP/1.1");
                     for (auto it = headers.begin(); it != headers.end(); ++it)
                         request.add(it->first, it->second);
 
@@ -187,7 +187,7 @@ namespace couchdb
                         client->setKeepAlive(true);
                     }
 
-                    Poco::Net::HTTPRequest request(method, url);
+                    Poco::Net::HTTPRequest request(method, url, "HTTP/1.1");
                     for (auto it = headers.begin(); it != headers.end(); ++it)
                         request.add(it->first, it->second);
                     client->sendRequest(request) << data;
