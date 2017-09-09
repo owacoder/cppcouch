@@ -10,6 +10,7 @@ An API to build an HTTP interface on top of is outlined in `shared.h`. Two class
 
 Before implementing an HTTP interface, a URL interface must be implemented. A URL implementation must inherit `http_url_base`, and overload the following members:
 
+```c++
     // Convert URL to a standard string representation of the entire URL
     virtual std::string to_string() const = 0;
     // Parse URL from a standard string representation
@@ -44,6 +45,7 @@ Before implementing an HTTP interface, a URL interface must be implemented. A UR
     // Set username, password, host and port in standard URL representation
     // Only the host is required to be present
     virtual void set_authority(const std::string &authority) = 0;
+```
     
 The unmarked functions should be relatively self-explanatory.
 
@@ -57,6 +59,7 @@ In the new HTTP interface, the following `typedef` must be defined:
   
 and the following two members must be overloaded:
 
+```c++
     // Allows the connection to cache responses to things that SHOULD never change for a given server, like the welcome message.
     virtual bool allow_cached_responses() const = 0;
     
@@ -83,6 +86,7 @@ and the following two members must be overloaded:
                             std::string &response_buffer,
                             bool &network_error,
                             std::string &error_description) = 0;
+```
                             
 Note that the URLs received may be for either HTTP or HTTPS connections, and an interface should be able to handle both.
 
