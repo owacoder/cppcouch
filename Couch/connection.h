@@ -399,7 +399,7 @@ namespace couchdb
             if (!get_supports_clusters())
                 return std::make_shared<node_connection<http_client>>(node_connection<http_client>(node_local_port, std::string(), comm));
             else
-                return std::make_shared<node_connection<http_client>>(*cluster_connection<http_client>(node_local_port, comm).begin());
+                return *cluster_connection<http_client>(node_local_port, comm).begin();
         }
 
         // Returns the version of the current CouchDB instance, or -1 if unknown

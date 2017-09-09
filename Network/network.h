@@ -91,8 +91,6 @@ namespace couchdb
         http_impl(std::shared_ptr<Poco::Net::HTTPClientSession> c = std::make_shared<Poco::Net::HTTPClientSession>(),
                   std::shared_ptr<Poco::Net::HTTPSClientSession> s = std::make_shared<Poco::Net::HTTPSClientSession>()) : client(c), sclient(s) {}
 
-        typedef typename http_client_base<http_url_impl>::duration_type duration_type;
-        typedef typename http_client_base<http_url_impl>::mode_type mode_type;
         typedef http_impl type;
 
         bool allow_cached_responses() const {return allow_caching;}

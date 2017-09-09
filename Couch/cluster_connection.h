@@ -52,7 +52,7 @@ namespace couchdb
         public:
             const_iterator() : p(NULL) {}
 
-            node_type operator*() {return node_type(p->node_local_port_, d, p->comm);}
+            std::shared_ptr<node_type> operator*() {return std::make_shared<node_type>(node_type(p->node_local_port_, d, p->comm));}
             std::shared_ptr<node_type> operator->() {return std::make_shared<node_type>(node_type(p->node_local_port_, d, p->comm));}
 
             bool operator==(const const_iterator &other) {return d == other.d;}
@@ -156,9 +156,9 @@ namespace couchdb
         }
 
         // Returns all nodes that are part of this node's cluster
-        virtual std::vector<node_type> list_cluster_nodes()
+        virtual std::vector<std::shared_ptr<node_type>> list_cluster_nodes()
         {
-            std::vector<node_type> result;
+            std::vector<std::shared_ptr<node_type>> result;
             json::value response = this->comm->get_data("/_membership");
             if (!response.is_object())
                 throw error(error::bad_response);
@@ -168,7 +168,7 @@ namespace couchdb
                 throw error(error::bad_response);
 
             for (auto n: response.get_array())
-                result.push_back(node_type(this->node_local_port_, n.get_string(), this->comm));
+                result.push_back(std::make_shared<node_type>(node_type(this->node_local_port_, n.get_string(), this->comm)));
 
             return result;
         }
