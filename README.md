@@ -1,5 +1,5 @@
 # cppcouch
-## C++11 wrapper library for CouchDB
+## C++11 library for interacting with CouchDB
 ### Overview
 
 This is a header-only library for interacting with CouchDB synchronously in C++. To include cppcouch in your project, just copy the directory structure to your project and `#include <Couch/cppcouch.h>` in your code. However, cppcouch is *not* complete: it still needs an HTTP interface to work!
