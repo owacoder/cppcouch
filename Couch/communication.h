@@ -26,13 +26,9 @@ namespace couchdb
     inline unsigned short local_ssl_port() {return 6984;}
     inline unsigned short local_cluster_node_port() {return 5986;}
 
-    template<typename http_client> class changes;
-
     template<typename http_client>
     class communication
     {
-        friend class changes<http_client>;
-
         communication(const communication &) {}
         communication &operator=(const communication &) {return *this;}
 

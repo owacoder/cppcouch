@@ -5,7 +5,6 @@
 #include "connection.h"
 #include <json.h>
 
-#if 0
 namespace couchdb
 {
     /* Changes class - This class opens a connection to CouchDB in any of the various feed modes,
@@ -16,7 +15,7 @@ namespace couchdb
 
     class signal_base
     {
-        void change_occured(const json::value &change) = 0;
+        virtual void change_occured(const json::value &change) = 0;
     };
 
     template<typename http_client, typename signal_type>
@@ -32,22 +31,19 @@ namespace couchdb
         changes(std::shared_ptr<connection_type> connection, signal_type signaller = signal_type())
             : signaller(signaller)
             , comm(connection->comm)
-            , ignore(0)
-            , pause(false)
-            , consumeRequests(true)
         {}
 
         // Returns the URL of the CouchDB server
-        std::string getURL() const {return comm->getURL();}
+        std::string get_server_url() const {return comm->get_server_url();}
 
         // Returns the name database this object is polling
-        std::string getDatabaseName() const {return db;}
+        std::string get_db_name() const {return db;}
 
         // Returns the URL of the database this object is polling
-        std::string getDatabaseURL() const {return comm->getURL() + "/" + url_encode(db);}
+        std::string get_db_url() const {return comm->getURL() + "/" + url_encode(db);}
 
-    public slots:
-        //starts a poll of the given database with supplied options
+#if 0
+        // Starts a poll of the given database with supplied options
         Error startPoll(const std::string &db, const std::string &feedStyle = "continuous", const Queries &options = Queries())
         {
             if (reply != NULL && reply->connected())
@@ -88,68 +84,7 @@ namespace couchdb
             return Error();
         }
 
-        void pausePoll() {pause = true;}
-        void unpausePoll(bool ignorePreviousChanges = false)
-        {
-            if (ignorePreviousChanges)
-                changes.clear();
-            pause = false;
-            // Initiate read immediately
-            read(*reply, Network::Http::Response(), boost::system::error_code());
-        }
-
-        //clear all IGNORE requests
-        void clearFilters()
-        {
-            pause = false;
-            ignore = 0;
-            ignoreList.clear();
-            consumeRequests = true;
-            changes.clear();
-        }
-
-        //ignore next request(s) received, of any type or document
-        void ignoreNext(int changes = 1) {ignore += qMax(changes, 1);}
-        void revertIgnoreNext(int changes = 1)
-        {
-            ignore -= qMax(changes, 1);
-            if (ignore < 0)
-                ignore = 0;
-        }
-
-        /* uses a custom command to determine whether to ignore a change signal
-         * commands:
-         *    "delete:id"    - ignore a deleted document with given id
-         *    "delete"       - ignore ALL deleted documents; individual delete requests still get consumed;
-         *                      this request does not get consumed (can only be externally cleared)
-         *    "update:id"    - ignore an un-deleted document with given id
-         *    "update"       - ignore ALL un-deleted documents; individual update requests still get consumed;
-         *                      this request does not get consumed (can only be externally cleared)
-         *    "all:id"       - ignore all changes with given id
-         *    "all"          - ignore ALL changes; individual update requests still get consumed
-         *                      this request does not get consumed (can only be externally cleared)
-         */
-        void ignoreRequest(const std::string &request) {ignoreList.append(request);}
-        void revertIgnoreRequest(const std::string &request) {ignoreList.removeOne(request);}
-        //either consume requests or not
-        void consumeIgnoreRequests(bool b) {consumeRequests = b;}
-
-    signals:
-        //emitted when a change occured in CouchDB, with CouchDB's response data
-        void changeOccured(const Json::JsonObject &change);
-
-        //emitted when the feed has been canceled
-        void changesFeedClosed();
-
-    private slots:
-        void closed(Network::Http::AsyncConnection &c,
-                    const boost::system::error_code &err)
-        {
-            (void) c;
-            (void) err;
-            emit changesFeedClosed();
-        }
-
+    private:
         void read(Network::Http::AsyncConnection &c,
                   const Network::Http::Response &response,
                   const boost::system::error_code &err)
@@ -206,17 +141,13 @@ namespace couchdb
                 }
             }
         }
+#endif
 
     private:
-        signal_type signaller;
         std::string db;
-        std::vector<std::string> changes_;
+        signal_type signaller;
         std::shared_ptr<communication_type> comm;
-        int ignore, pause;
-        std::vector<std::string> ignoreList;
-        bool consumeRequests;
     };
 }
-#endif
 
 #endif // CPPCOUCH_CHANGES_H

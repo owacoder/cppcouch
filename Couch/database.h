@@ -60,14 +60,13 @@ namespace couchdb
         }
         virtual ~database() {}
 
-        // Returns Error::NoError if the database exists,
-        // otherwise Error::ContentNotAvailable will be returned
+        // Returns true if the database exists
         virtual bool exists() const
         {
             try {comm_->get_data("/" + url_encode(name_), "HEAD");}
             catch (const error &e)
             {
-                if (e.type() == error::content_not_found)
+                if (e.network_response_code() == 404)
                     return false;
                 throw;
             }
@@ -256,11 +255,14 @@ namespace couchdb
             return *this;
         }
 
+        // Returns the number of documents in the database
+        virtual bool get_is_compacting() {return get_info()["compact_running"].get_bool();}
+
         // Returns the unencoded name of the database
         virtual std::string get_db_name() const {return name_;}
 
         // Returns CouchDB's information about the database
-        virtual json::value get_info() const
+        virtual json::value get_info()
         {
             json::value response = comm_->get_data("/" + url_encode(name_));
             if (!response.is_object())
@@ -276,6 +278,12 @@ namespace couchdb
 
             return response;
         }
+
+        // Returns the number of documents in the database
+        virtual size_t get_doc_count() {return get_info()["doc_count"].get_int();}
+
+        // Returns the number of deleted documents in the database
+        virtual size_t get_deleted_doc_count() {return get_info()["doc_del_count"].get_int();}
 
         // Lists all normal documents (excludes design documents)
         virtual std::vector<document_type> list_docs()

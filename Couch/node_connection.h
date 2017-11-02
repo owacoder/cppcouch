@@ -21,7 +21,6 @@ namespace couchdb
     template<typename http_client> class locator;
     template<typename http_client> class database;
     template<typename http_client> class document;
-    template<typename http_client> class changes;
 
     template<typename http_client>
     class node_connection : public connection<http_client>
@@ -29,7 +28,6 @@ namespace couchdb
         friend class locator<http_client>;
         friend class database<http_client>;
         friend class document<http_client>;
-        friend class changes<http_client>;
         friend class connection<http_client>;
         friend class cluster_connection<http_client>;
 

@@ -21,7 +21,6 @@ namespace couchdb
     template<typename http_client> class locator;
     template<typename http_client> class database;
     template<typename http_client> class document;
-    template<typename http_client> class changes;
     template<typename http_client> class cluster_connection;
     template<typename http_client> class node_connection;
 
@@ -31,7 +30,6 @@ namespace couchdb
         friend class locator<http_client>;
         friend class database<http_client>;
         friend class document<http_client>;
-        friend class changes<http_client>;
 
         typedef communication<http_client> base;
         typedef database<http_client> database_type;
@@ -161,6 +159,12 @@ namespace couchdb
         {
             comm->get_raw_data("/" + url_encode(db), "HEAD");
             return database_type(comm, db);
+        }
+
+        // Returns true if the database exists
+        virtual bool db_exists(const std::string &db)
+        {
+            return database_type(comm, db).exists();
         }
 
         // Creates a database with given name if possible, and returns it
