@@ -23,13 +23,13 @@ namespace couchdb
 
     protected:
         attachment(std::shared_ptr<base> _comm, const std::string &_db, const std::string &_document,
-                     const std::string &_id, const std::string &_revision, const std::string &_contentType, int64_t _size)
+                     const std::string &_id, const std::string &_revision, const std::string &_content_type, int64_t _size)
             : comm_(_comm)
             , db_(_db)
             , document_(_document)
             , id_(_id)
             , revision_(_revision)
-            , content_type_(_contentType)
+            , content_type_(_content_type)
             , size_(_size)
         {}
 
@@ -90,13 +90,13 @@ namespace couchdb
         // Sets the data contained in this attachment
         // and updates this attachment to point to the new revision of the document
         // IMPORTANT: No other attachments will be updated
-        virtual attachment &set_data(const std::string &data, const std::string &_contentType = "")
+        virtual attachment &set_data(const std::string &data, const std::string &content_type = "")
         {
             typename base::header_map headers;
-            if (_contentType.empty())
+            if (content_type.empty())
                 headers["Content-Type"] = content_type_;
             else
-                headers["Content-Type"] = _contentType;
+                headers["Content-Type"] = content_type;
 
             json::value obj = comm_->get_data(getURL(true), headers, "PUT", data);
             if (!obj.is_object())

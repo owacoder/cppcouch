@@ -21,13 +21,14 @@ namespace couchdb
     /* http_client_base class - Provides a base class for the network implementation.
      * All overloads must implement the specified API.
      */
-    template<typename http_url_type_t, typename http_client_timeout_duration_t = int, typename http_client_timeout_mode_t = int>
+    template<typename http_url_type_t, typename http_client_timeout_duration_t = int, typename http_client_timeout_mode_t = int, typename http_client_response_handle_t = int>
     struct http_client_base
     {
         // These typedefs MUST be set in a derived class of http_client_base
         typedef http_url_type_t url_type; // The URL class used with this client. The class must inherit `http_url_base`
         typedef http_client_timeout_duration_t duration_type; // The timeout duration type class
         typedef http_client_timeout_mode_t mode_type; // The timeout mode type class
+        typedef http_client_response_handle_t response_handle_type; // The response handle type
         // This should ALWAYS be the type of the class instantiation.
         // The derived class should ALWAYS overload this typedef.
         // For example:
@@ -39,6 +40,12 @@ namespace couchdb
         typedef http_client_base<duration_type, mode_type> type;
         // Define the following to true if you want caching enabled
         virtual bool allow_cached_responses() const = 0;
+        // Define the following to the invalid response handle (i.e. NULL, perhaps)
+        virtual response_handle_type invalid_handle() const = 0;
+        // Returns true if the passed handle is invalid (i.e. NULL, perhaps)
+        virtual bool is_invalid_handle(response_handle_type handle) const = 0;
+        // Reset this connection, closing all active connections
+        virtual void reset() = 0;
 
         virtual ~http_client_base() {}
 
@@ -59,15 +66,49 @@ namespace couchdb
          * Return value: Must return the HTTP status code, or zero (0) if an error occured before the response arrived.
          * The client is responsible for handling any redirect (3xx) HTTP codes
          */
-        virtual int operator()(std::string &url,
-                               http_client_timeout_duration_t &timeout,
-                               http_client_timeout_mode_t &timeout_mode,
+        virtual int operator()(const std::string &url,
+                               http_client_timeout_duration_t timeout,
+                               http_client_timeout_mode_t timeout_mode,
                                std::map<std::string, std::string> &headers,
-                               std::string &method,
+                               const std::string &method,
                                const std::string &data,
                                std::string &response_buffer,
                                bool &network_error,
                                std::string &error_description) = 0;
+
+        /*          url       (IN): The URL to visit.
+         *      timeout       (IN): The length of time before timeout should occur.
+         * timeout_mode       (IN): Implementation-specific choice of how to timeout.
+         *      headers   (IN/OUT): The HTTP headers to be used for the request (WARNING: the list may not be all-inclusive, and
+         *                          may not contain all required header fields). The keys that will always be set are "Content-Type",
+         *                          "Content-Length", and "Accept". NOTE: All keys sent to the client function will be entirely lowercase.
+         *
+         *                          Output to this parameter MUST specify all keys as lowercase.
+         *       method       (IN): What HTTP method to use (e.g. GET, PUT, DELETE, POST, COPY, etc.). Case is not specified.
+         *         data       (IN): The payload to send as the body of the request.
+         *   response_buffer (OUT): Where to put the body of the response.
+         *     network_error (OUT): Must be set to true (1) if an error occured, false (0) otherwise.
+         * error_description (OUT): Set to a human-readable description of what error occured.
+         *
+         * Return value: Must return the HTTP status code, or zero (0) if an error occured before the response arrived.
+         * The client is responsible for handling any redirect (3xx) HTTP codes
+         */
+        virtual int get_response_handle(const std::string &url,
+                                        http_client_timeout_duration_t timeout,
+                                        http_client_timeout_mode_t timeout_mode,
+                                        std::map<std::string, std::string> &headers,
+                                        const std::string &method,
+                                        const std::string &data,
+                                        response_handle_type &response_buffer,
+                                        bool &network_error,
+                                        std::string &error_description) = 0;
+
+        /* Read a line from a response handle.
+         * Either blocks until a line is available, or returns an empty line if no lines are available
+         * (It doesn't matter which, it just helps the managing thread to shut the feed down sooner
+         * if this function does not block)
+         */
+        virtual std::string read_line_from_response_handle(response_handle_type handle) = 0;
     };
 
     // This class must be used as the base class of a URL implementation

@@ -1,5 +1,5 @@
-#ifndef NETWORK_H
-#define NETWORK_H
+#ifndef POCO_NETWORK_H
+#define POCO_NETWORK_H
 
 #include "../Couch/shared.h"
 #include "../Couch/communication.h"
@@ -15,10 +15,10 @@
 
 namespace couchdb
 {
-    struct http_url_impl : public http_url_base, public Poco::URI
+    struct poco_url_impl : public http_url_base, public Poco::URI
     {
-        http_url_impl(const std::string &url = std::string()) : Poco::URI(url) {}
-        virtual ~http_url_impl() {}
+        poco_url_impl(const std::string &url = std::string()) : Poco::URI(url) {}
+        virtual ~poco_url_impl() {}
 
         std::string to_string() const {return toString();}
         void from_string(const std::string &url)
@@ -86,14 +86,27 @@ namespace couchdb
     };
 
     template<bool allow_caching = true>
-    struct http_impl : public http_client_base<http_url_impl>
+    struct poco_http_impl : public http_client_base<poco_url_impl, /* URL implementation */
+                                               int, /* Timeout duration */
+                                               int, /* Timeout mode */
+                                               std::istream * /* Response handle */>
     {
-        http_impl(std::shared_ptr<Poco::Net::HTTPClientSession> c = std::make_shared<Poco::Net::HTTPClientSession>(),
+        poco_http_impl(std::shared_ptr<Poco::Net::HTTPClientSession> c = std::make_shared<Poco::Net::HTTPClientSession>(),
                   std::shared_ptr<Poco::Net::HTTPSClientSession> s = std::make_shared<Poco::Net::HTTPSClientSession>()) : client(c), sclient(s) {}
 
-        typedef http_impl type;
+        typedef poco_http_impl type;
+
+        response_handle_type invalid_handle() const {return NULL;}
+
+        bool is_invalid_handle(response_handle_type handle) const {return handle == NULL;}
 
         bool allow_cached_responses() const {return allow_caching;}
+
+        void reset()
+        {
+            sclient->reset();
+            client->reset();
+        }
 
         /*          url       (IN): The URL to visit.
          *      timeout       (IN): The length of time before timeout should occur.
@@ -109,11 +122,11 @@ namespace couchdb
          *
          * Return value: Must return the HTTP status code, or zero if an error occured before the response arrived
          */
-        virtual int operator()(std::string &url,
-                               duration_type &timeout,
-                               mode_type &timeout_mode,
+        virtual int operator()(const std::string &url,
+                               duration_type timeout,
+                               mode_type timeout_mode,
                                std::map<std::string, std::string> &headers,
-                               std::string &method,
+                               const std::string &method,
                                const std::string &data,
                                std::string &response_buffer,
                                bool &network_error,
@@ -208,12 +221,141 @@ namespace couchdb
             }
             catch (const Poco::Net::NetException &e)
             {
-                sclient.reset();
-                client.reset();
+                reset();
                 network_error = true;
                 error_description = e.what();
                 return 0;
             }
+        }
+
+        /*          url       (IN): The URL to visit.
+         *      timeout       (IN): The length of time before timeout should occur.
+         * timeout_mode       (IN): Implementation-specific choice of how to timeout.
+         *      headers   (IN/OUT): The HTTP headers to be used for the request (WARNING: the list may not be all-inclusive, and
+         *                        may not contain all required header fields, e.g. Content-Length). Output to this parameter
+         *                        MUST specify all keys as lowercase.
+         *       method       (IN): What HTTP method to use (e.g. GET, PUT, DELETE, POST, COPY, etc.). Case is not specified.
+         *         data       (IN): The payload to send as the body of the request.
+         * response_buffer   (OUT): Where to put the body of the response.
+         *   network_error   (OUT): Must be set to true (1) if an error occured, false (0) otherwise.
+         * error_description (OUT): Set to a human-readable description of what error occured.
+         *
+         * Return value: Must return the HTTP status code, or zero if an error occured before the response arrived
+         *
+         * NOTE: the response_buffer must be completely read before reusing this http_impl object, or reset() must be called
+         */
+        virtual int get_response_handle(const std::string &url,
+                                        duration_type timeout,
+                                        mode_type timeout_mode,
+                                        std::map<std::string, std::string> &headers,
+                                        const std::string &method,
+                                        const std::string &data,
+                                        response_handle_type &response_buffer,
+                                        bool &network_error,
+                                        std::string &error_description)
+        {
+            Poco::URI uri(url);
+
+            (void) timeout;
+            (void) timeout_mode;
+
+            try
+            {
+                // HTTPS connection
+                if (uri.getScheme() == "https")
+                {
+                    if (uri.getHost() != sclient->getHost() ||
+                        (uri.getPort() != sclient->getPort() && uri.getPort() != 0))
+                    {
+                        sclient->reset();
+                        sclient->setHost(uri.getHost());
+                        sclient->setPort(uri.getPort());
+                        sclient->setKeepAlive(true);
+                    }
+
+                    Poco::Net::HTTPRequest request(method, url, "HTTP/1.1");
+                    for (auto it = headers.begin(); it != headers.end(); ++it)
+                        request.add(it->first, it->second);
+
+                    sclient->sendRequest(request) << data;
+
+#ifdef CPPCOUCH_FULL_DEBUG
+                    std::cout << method << " " << url << std::endl;
+                    for (auto it = request.begin(); it != request.end(); ++it)
+                        std::cout << it->first << ": " << it->second << std::endl;
+                    std::cout << data << std::endl;
+#endif
+
+                    Poco::Net::HTTPResponse response;
+                    response_buffer = &sclient->receiveResponse(response);
+
+                    int status = static_cast<int>(response.getStatus());
+                    network_error = status / 100 != 2;
+                    error_description = response.getReason();
+
+                    headers.clear();
+                    for (auto it = response.begin(); it != response.end(); ++it)
+                        headers[ascii_string_tools::to_lower_copy(it->first)] = it->second;
+
+#ifdef CPPCOUCH_FULL_DEBUG
+                    std::cout << method << " " << url << std::endl;
+                    for (auto it = response.begin(); it != response.end(); ++it)
+                        std::cout << it->first << ": " << it->second << std::endl;
+                    std::cout << response_buffer << std::endl;
+#endif
+
+                    return status;
+                }
+                // Normal HTTP connection
+                else
+                {
+                    if (uri.getHost() != client->getHost() ||
+                        (uri.getPort() != client->getPort() && uri.getPort() != 0))
+                    {
+                        client->reset();
+                        client->setHost(uri.getHost());
+                        client->setPort(uri.getPort());
+                        client->setKeepAlive(true);
+                    }
+
+                    Poco::Net::HTTPRequest request(method, url, "HTTP/1.1");
+                    for (auto it = headers.begin(); it != headers.end(); ++it)
+                        request.add(it->first, it->second);
+                    client->sendRequest(request) << data;
+
+                    Poco::Net::HTTPResponse response;
+                    response_buffer = &client->receiveResponse(response);
+
+                    int status = static_cast<int>(response.getStatus());
+                    network_error = status / 100 != 2;
+                    error_description = response.getReason();
+
+                    headers.clear();
+                    for (auto it = response.begin(); it != response.end(); ++it)
+                        headers[ascii_string_tools::to_lower_copy(it->first)] = it->second;
+
+                    return status;
+                }
+            }
+            catch (const Poco::Net::NetException &e)
+            {
+                reset();
+                network_error = true;
+                error_description = e.what();
+                response_buffer = NULL;
+                return 0;
+            }
+        }
+
+        /* Read a line from a response handle.
+         * Blocks until a line is available.
+         */
+        virtual std::string read_line_from_response_handle(response_handle_type handle)
+        {
+            std::string line;
+            if (handle != invalid_handle() && *handle)
+                std::getline(*handle, line);
+            return line;
         }
 
     private:
@@ -222,4 +364,4 @@ namespace couchdb
     };
 }
 
-#endif // NETWORK_H
+#endif // POCO_NETWORK_H

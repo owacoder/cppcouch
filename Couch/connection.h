@@ -34,6 +34,9 @@ namespace couchdb
         typedef communication<http_client> base;
         typedef database<http_client> database_type;
 
+        typedef typename http_client::duration_type http_client_timeout_duration_t;
+        typedef typename http_client::mode_type http_client_timeout_mode_t;
+
     public:
         connection(std::shared_ptr<base> _comm = std::shared_ptr<base>())
             : comm(_comm)
@@ -41,25 +44,28 @@ namespace couchdb
         connection(std::shared_ptr<base> _comm,
                    const std::string &url,
                    const user &_user = user(),
-                   auth_type authType = auth_none)
-            : comm(_comm? _comm: std::make_shared<base>(http_client(), url, _user, authType))
+                   auth_type authType = auth_none,
+                   http_client_timeout_duration_t timeout = http_client_timeout_duration_t())
+            : comm(_comm? _comm: std::make_shared<base>(http_client(), url, _user, authType, timeout))
         {
             comm->set_server_url(url);
         }
         connection(http_client _comm,
                    const std::string &url,
                    const user &_user = user(),
-                   auth_type authType = auth_none)
-            : comm(std::make_shared<base>(_comm, url, _user, authType))
+                   auth_type authType = auth_none,
+                   http_client_timeout_duration_t timeout = http_client_timeout_duration_t())
+            : comm(std::make_shared<base>(_comm, url, _user, authType, timeout))
         {}
         connection(const std::string &url,
                    const user &_user = user(),
-                   auth_type authType = auth_none)
-            : comm(std::make_shared<base>(http_client(), url, _user, authType))
+                   auth_type authType = auth_none,
+                   http_client_timeout_duration_t timeout = http_client_timeout_duration_t())
+            : comm(std::make_shared<base>(http_client(), url, _user, authType, timeout))
         {}
         virtual ~connection() {}
 
-        base &lowest_level() {return comm;}
+        base &lowest_level() {return *comm;}
 
         // Get and set communication timeouts, in milliseconds
         virtual typename base::http_client_timeout_duration_t get_timeout() const {return comm->get_timeout();}

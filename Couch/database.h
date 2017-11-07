@@ -13,6 +13,8 @@ namespace couchdb
      * for all subclasses.
      */
 
+    template<typename http_client, typename signaller> class changes;
+    template<typename http_client, typename signaller> class changes_feed_thread;
     template<typename http_client> class connection;
 
     template<typename http_client>
@@ -71,6 +73,19 @@ namespace couchdb
                 throw;
             }
             return true;
+        }
+
+        // Returns a continuous changes feed that watches this database
+        template<typename signal_type>
+        std::shared_ptr<changes<http_client, signal_type>> make_changes_feed(signal_type &signal)
+        {
+            return std::make_shared<changes<http_client, signal_type>>(*this, signal);
+        }
+
+        template<typename signal_type>
+        std::shared_ptr<changes_feed_thread<http_client, signal_type>> make_changes_feed_thread()
+        {
+            return std::make_shared<changes_feed_thread<http_client, signal_type>>(*this);
         }
 
         // Returns the connection object of this database object
