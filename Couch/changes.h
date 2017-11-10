@@ -164,14 +164,19 @@ namespace couchdb
         bool is_active() const
         {
             std::lock_guard<std::mutex> lock(comm_mutex);
-            return !comm->get_client().is_invalid_handle(handle) && !stop_requested;
+            return comm->get_client().is_active_handle(handle) && !stop_requested;
         }
 
         // Starts a continuous feed with the provided queries in the current thread
         void start(const queries &options = queries())
         {
+            {
+                std::lock_guard<std::mutex> lock(err_mutex);
+                has_error = false;
+            }
+
             std::lock_guard<std::mutex> lock(comm_mutex);
-            if (comm->get_client().is_invalid_handle(handle))
+            if (handle == comm->get_client().invalid_handle())
             {
                 std::string url = "/" + url_encode(db.get_db_name()) + "/_changes?feed=continuous";
                 handle = comm->get_raw_data_response(add_url_queries(url, options));
@@ -233,7 +238,7 @@ namespace couchdb
         void stop()
         {
             std::lock_guard<std::mutex> lock(comm_mutex);
-            if (!comm->get_client().is_invalid_handle(handle))
+            if (handle != comm->get_client().invalid_handle())
             {
                 comm->get_client().reset();
                 handle = comm->get_client().invalid_handle();
@@ -254,7 +259,7 @@ namespace couchdb
             if (comm_mutex.try_lock())
             {
                 std::lock_guard<std::mutex> lock(comm_mutex, std::adopt_lock);
-                if (!comm->get_client().is_invalid_handle(handle))
+                if (handle != comm->get_client().invalid_handle())
                 {
                     comm->get_client().reset();
                     handle = comm->get_client().invalid_handle();
@@ -285,6 +290,12 @@ namespace couchdb
         }
 
     protected:
+        bool feed_blocks_on_reads() const
+        {
+            std::lock_guard<std::mutex> lock(comm_mutex);
+            return comm->get_client().is_response_handle_blocking();
+        }
+
         static void start_and_run(changes *changes_feed, const queries &q)
         {
             try
@@ -301,6 +312,16 @@ namespace couchdb
 
             {
                 std::unique_lock<std::mutex> lock(changes_feed->comm_mutex);
+
+                // If the handle is not invalid, it wasn't a clean shutdown (note that the handle may be valid, but inactive)
+                if (changes_feed->handle != changes_feed->comm->get_client().invalid_handle())
+                {
+                    std::lock_guard<std::mutex> lock(changes_feed->err_mutex);
+                    changes_feed->has_error = true;
+                    changes_feed->err = couchdb::error(couchdb::error::connection_lost);
+                    changes_feed->stop_requested = true;
+                }
+
                 if (changes_feed->stop_requested)
                 {
                     lock.unlock();
@@ -315,10 +336,21 @@ namespace couchdb
         {
             try
             {
-                while (changes_feed->is_active())
+                if (changes_feed->feed_blocks_on_reads())
                 {
-                    changes_feed->wait_for_changes();
-                    std::this_thread::yield();
+                    while (changes_feed->is_active())
+                    {
+                        changes_feed->wait_for_changes();
+                        std::this_thread::yield();
+                    }
+                }
+                else
+                {
+                    while (changes_feed->is_active())
+                    {
+                        changes_feed->wait_for_changes();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
                 }
             } catch (couchdb::error e)
             {
@@ -329,6 +361,16 @@ namespace couchdb
 
             {
                 std::unique_lock<std::mutex> lock(changes_feed->comm_mutex);
+
+                // If the handle is not invalid, it wasn't a clean shutdown (note that the handle may be valid, but inactive)
+                if (changes_feed->handle != changes_feed->comm->get_client().invalid_handle())
+                {
+                    std::lock_guard<std::mutex> lock(changes_feed->err_mutex);
+                    changes_feed->has_error = true;
+                    changes_feed->err = couchdb::error(couchdb::error::connection_lost);
+                    changes_feed->stop_requested = true;
+                }
+
                 if (changes_feed->stop_requested)
                 {
                     lock.unlock();

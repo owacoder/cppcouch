@@ -1602,14 +1602,51 @@ namespace CppHttp
 
             // Starts the asynchronous jobs in this connection
             // Cannot be invoked in any handler
-            void start()
+            size_t poll()
             {
                 if (!do_not_poll)
                 {
                     if (io_serv.stopped())
                         io_serv.reset();
-                    io_serv.poll();
+                    return io_serv.poll();
                 }
+                return 0;
+            }
+            // Starts one asynchronous job in this connection
+            // Cannot be invoked in any handler
+            size_t poll_one()
+            {
+                if (!do_not_poll)
+                {
+                    if (io_serv.stopped())
+                        io_serv.reset();
+                    return io_serv.poll_one();
+                }
+                return 0;
+            }
+            // Starts one synchronous job in this connection (blocking)
+            // Cannot be invoked in any handler
+            size_t run_one()
+            {
+                if (!do_not_poll)
+                {
+                    if (io_serv.stopped())
+                        io_serv.reset();
+                    return io_serv.run_one();
+                }
+                return 0;
+            }
+            // Starts the synchronous jobs in this connection (blocking)
+            // Cannot be invoked in any handler
+            size_t run()
+            {
+                if (!do_not_poll)
+                {
+                    if (io_serv.stopped())
+                        io_serv.reset();
+                    return io_serv.run();
+                }
+                return 0;
             }
             // Stops the asynchronous jobs in this connection
             // Can be invoked in any handler
@@ -3453,7 +3490,7 @@ namespace CppHttp
                                 --polling_;
                                 return;
                             }
-                            async_connections_[i].c->start();
+                            async_connections_[i].c->poll();
                             processEvents();
                         }
                     }
@@ -3477,7 +3514,7 @@ namespace CppHttp
                                 --polling_;
                                 return;
                             }
-                            async_connections_[i].c->start();
+                            async_connections_[i].c->poll();
                             processEvents();
                         }
                     }
@@ -3501,7 +3538,7 @@ namespace CppHttp
                                 --polling_;
                                 return;
                             }
-                            async_connections_[i].c->start();
+                            async_connections_[i].c->poll();
                             processEvents();
                         }
                     }
@@ -3514,7 +3551,7 @@ namespace CppHttp
                 {
                     ++polling_;
                     for (size_t i = 0; i < async_connections_.size(); ++i)
-                        async_connections_[i].c->start();
+                        async_connections_[i].c->poll();
                     --polling_;
                 }
             }

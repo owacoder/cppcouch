@@ -42,8 +42,11 @@ namespace couchdb
         virtual bool allow_cached_responses() const = 0;
         // Define the following to the invalid response handle (i.e. NULL, perhaps)
         virtual response_handle_type invalid_handle() const = 0;
-        // Returns true if the passed handle is invalid (i.e. NULL, perhaps)
-        virtual bool is_invalid_handle(response_handle_type handle) const = 0;
+        // Returns true if the passed handle is active (i.e. connected and readable)
+        virtual bool is_active_handle(response_handle_type handle) const = 0;
+        // Returns true if the passed handle is a blocking handle (i.e. the read_line_from_response_handle() function blocks until valid result)
+        // or returns false if the passed handle is non-blocking (i.e. the read_line_from_response_handle() function returns immediately with blank line if no result)
+        virtual bool is_response_handle_blocking() const = 0;
         // Reset this connection, closing all active connections
         virtual void reset() = 0;
 
@@ -240,6 +243,8 @@ namespace couchdb
             invalid_argument,
             unknown_error,
 
+            connection_lost,
+
             forbidden,
             bad_response,
             request_failed,
@@ -271,6 +276,8 @@ namespace couchdb
             {
                 case invalid_argument:
                     return "An invalid argument was passed to a function internally";
+                case connection_lost:
+                    return "The connection to CouchDB was lost";
                 case communication_error:
                     return "There was an error communicating with CouchDB";
                 case forbidden:

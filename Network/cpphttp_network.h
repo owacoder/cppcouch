@@ -66,7 +66,7 @@ namespace couchdb
         std::deque<std::string> responses;
     };
 
-    template<bool allow_caching = true>
+    template<bool allow_caching = true, bool blocking_response_handle = true>
     struct asio_http_impl : public http_client_base<asio_url_impl, /* URL implementation */
                                                boost::posix_time::time_duration, /* Timeout duration */
                                                CppHttp::Http::Connection::TimeoutMode, /* Timeout mode */
@@ -79,10 +79,12 @@ namespace couchdb
 
         response_handle_type invalid_handle() const {return response_handle_type();}
 
-        bool is_invalid_handle(response_handle_type handle) const
+        bool is_active_handle(response_handle_type handle) const
         {
-            return !handle || !handle->connection || handle->connection->disconnected();
+            return handle && handle->connection && handle->connection->connected() && handle->connection->success();
         }
+
+        bool is_response_handle_blocking() const {return blocking_response_handle;}
 
         bool allow_cached_responses() const {return allow_caching;}
 
@@ -190,11 +192,8 @@ namespace couchdb
             else
                 connection->sendRequest();
 
-            while (connection->response().code() == CppHttp::Http::Invalid)
-            {
-                connection->start();
-                std::this_thread::yield();
-            }
+            while (connection->response().code() == CppHttp::Http::Invalid && connection->run_one())
+                ;
 
             CppHttp::Http::Response response = connection->response();
 
@@ -217,7 +216,7 @@ namespace couchdb
         }
 
         /* Read a line from a response handle.
-         * Returns an empty line if no line is available
+         * Blocks until a line is available
          */
         virtual std::string read_line_from_response_handle(response_handle_type handle)
         {
@@ -225,7 +224,15 @@ namespace couchdb
             if (handle && handle->connection)
             {
                 if (handle->connection->connected())
-                    handle->connection->start();
+                {
+                    if (blocking_response_handle)
+                    {
+                        while (handle->responses.empty() && handle->connection->run_one())
+                            ;
+                    }
+                    else
+                        handle->connection->poll();
+                }
 
                 if (!handle->responses.empty())
                 {

@@ -98,7 +98,9 @@ namespace couchdb
 
         response_handle_type invalid_handle() const {return NULL;}
 
-        bool is_invalid_handle(response_handle_type handle) const {return handle == NULL;}
+        bool is_active_handle(response_handle_type handle) const {return handle != NULL;}
+
+        bool is_response_handle_blocking() const {return true;}
 
         bool allow_cached_responses() const {return allow_caching;}
 
